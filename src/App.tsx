@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { CITIES } from './policy';
 import { computeAnnual } from './calc/annual';
 import InputPanel from './components/InputPanel';
@@ -6,8 +6,9 @@ import type { FormState } from './components/InputPanel';
 import SummaryCards from './components/SummaryCards';
 import MonthlyTable from './components/MonthlyTable';
 import InsuranceCard from './components/InsuranceCard';
-import MonthlyChart from './components/MonthlyChart';
 import Footer from './components/Footer';
+
+const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
 
 export default function App() {
   const [form, setForm] = useState<FormState>({
@@ -42,7 +43,9 @@ export default function App() {
             <SummaryCards result={result} />
             <MonthlyTable result={result} />
             <InsuranceCard result={result} />
-            <MonthlyChart result={result} />
+            <Suspense fallback={<div className="h-72 animate-pulse rounded-xl bg-white shadow-sm" />}>
+              <MonthlyChart result={result} />
+            </Suspense>
           </div>
         </div>
       </main>

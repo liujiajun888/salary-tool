@@ -25,7 +25,7 @@ export default function MonthlyChart({ result }: { result: AnnualResult }) {
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" fontSize={12} />
-            <YAxis fontSize={12} tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} />
+            <YAxis fontSize={12} tickFormatter={(v: number) => (v >= 10000 ? `${Math.round(v / 10000)}万` : v === 0 ? '0' : `${+(v / 1000).toFixed(1)}k`)} />
             <Tooltip formatter={(v) => `¥${formatMoney(Number(v))}`} />
             <Legend />
             <Bar dataKey="税后" stackId="a" fill="#16a34a" />
