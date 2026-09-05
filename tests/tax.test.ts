@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cumulativeTax, bonusTax, withhold } from '../src/calc/tax';
+import { ANNUAL_BRACKETS, MONTHLY_BRACKETS, cumulativeTax, bonusTax, withhold } from '../src/calc/tax';
 
 describe('cumulativeTax 综合所得年度税率表', () => {
   it('3% 档', () => expect(cumulativeTax(19750)).toBeCloseTo(592.5));
@@ -47,5 +47,40 @@ describe('withhold 累计预扣法', () => {
     // 年应纳税所得额 = 360000 - 60000 - 63000 - 18000 = 219000 → 20% 档
     const taxes = withhold(withDeduct);
     expect(taxes.reduce((a, b) => a + b, 0)).toBeCloseTo(219000 * 0.2 - 16920);
+  });
+});
+
+describe('税率表连续性（速算扣除数自洽）', () => {
+  // 相邻档位在 limit 处税额必须相等：limit×rate_lo − qd_lo == limit×rate_hi − qd_hi
+  // 可一次性发现 limit/rate/quickDeduction 转置或写错
+  it.each(ANNUAL_BRACKETS.slice(0, -1).map((b, i) => [b, ANNUAL_BRACKETS[i + 1]]))(
+    '年度表 %j → %j 交界连续',
+    (lo, hi) => {
+      const fromBelow = lo.limit * lo.rate - lo.quickDeduction;
+      const fromAbove = lo.limit * hi.rate - hi.quickDeduction;
+      expect(Math.abs(fromBelow - fromAbove)).toBeLessThan(0.01);
+    },
+  );
+
+  it.each(MONTHLY_BRACKETS.slice(0, -1).map((b, i) => [b, MONTHLY_BRACKETS[i + 1]]))(
+    '月度表 %j → %j 交界连续',
+    (lo, hi) => {
+      const fromBelow = lo.limit * lo.rate - lo.quickDeduction;
+      const fromAbove = lo.limit * hi.rate - hi.quickDeduction;
+      expect(Math.abs(fromBelow - fromAbove)).toBeLessThan(0.01);
+    },
+  );
+});
+
+describe('表尾档位与 clamp 分支', () => {
+  it('年度表最高档', () => expect(cumulativeTax(1000000)).toBeCloseTo(268080));
+  it('月度表跳档后（144001 → 20% 档）', () => expect(bonusTax(144001)).toBeCloseTo(27390.2));
+  it('月中扣扣除额激增时当月税为 0，后续月份补回', () => {
+    const months = [
+      { gross: 30000, personalDeduction: 10250, specialDeduction: 0 },
+      { gross: 2000, personalDeduction: 1000, specialDeduction: 12000 },
+      { gross: 60000, personalDeduction: 10000, specialDeduction: 0 },
+    ];
+    expect(withhold(months)).toEqual([442.5, 0, 1412.5]);
   });
 });

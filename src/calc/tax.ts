@@ -43,6 +43,7 @@ export function cumulativeTax(cumTaxable: number): number {
 }
 
 // 全年一次性奖金：按 bonus÷12 查月度税率表，对全额奖金计税，速算扣除数只减一次。
+/** 返回未取整值；调用方需 round2 到分（见 design spec §5.8） */
 export function bonusTax(bonus: number): number {
   if (bonus <= 0) return 0;
   return taxByBrackets(bonus, bonus / 12, MONTHLY_BRACKETS);
