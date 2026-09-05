@@ -3,6 +3,8 @@ import { CITIES } from './policy';
 import { computeAnnual } from './calc/annual';
 import InputPanel from './components/InputPanel';
 import type { FormState } from './components/InputPanel';
+import SummaryCards from './components/SummaryCards';
+import MonthlyTable from './components/MonthlyTable';
 
 export default function App() {
   const [form, setForm] = useState<FormState>({
@@ -34,9 +36,8 @@ export default function App() {
             patch={patch}
           />
           <div className="space-y-6">
-            <div className="rounded-xl bg-white p-5 text-sm text-gray-500 shadow-sm">
-              结果组件将在后续任务接入（当前推荐方案：{result.recommendedId}，年度总到手 ¥{result.totals.netYear}）
-            </div>
+            <SummaryCards result={result} />
+            <MonthlyTable result={result} />
           </div>
         </div>
       </main>
