@@ -92,7 +92,7 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   ]);
 
   const months: MonthInput[] = Array.from({ length: 12 }, () => ({
-    gross: input.monthlySalary,
+    gross: round2(input.monthlySalary),
     personalDeduction: personalMonthly,
     specialDeduction: input.specialDeductionMonthly,
   }));
@@ -104,8 +104,9 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   );
 
   const bonusRow = (label: string, gross: number): BonusRow => {
-    const tax = round2(bonusTax(gross));
-    return { label, gross, tax, net: round2(gross - tax) };
+    const gross2 = round2(gross);
+    const tax = round2(bonusTax(gross2));
+    return { label, gross: gross2, tax, net: round2(gross2 - tax) };
   };
 
   // 方案 A：各笔奖金分别单独计税（常用简化口径）
@@ -117,13 +118,15 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
 
   // 方案 B：年终奖并入 12 月综合所得，其余奖金仍单独计税
   const monthsB = months.map((m, i) =>
-    i === 11 ? { ...m, gross: m.gross + bonus } : m,
+    i === 11 ? { ...m, gross: round2(m.gross + bonus) } : m,
   );
   const taxesB = withhold(monthsB);
   const bonusesB: BonusRow[] = extraSalaries.map((gross, i) => bonusRow(`${13 + i} 薪`, gross));
 
   // 方案 C：全部奖金合并为一笔单独计税
   const pool = round2(extraSalaries.reduce((a, b) => a + b, 0) + bonus);
+  // C 的月薪流水与 A 完全相同，直接复用；奖金税表为凸函数（斜率非降、f(0)=0），
+  // 超可加性保证 C 不可能严格优于 A 的拆分，仅作政策合规对比展示
   const taxesC = taxesA;
   const bonusesC: BonusRow[] = pool > 0 ? [bonusRow('奖金合并', pool)] : [];
 

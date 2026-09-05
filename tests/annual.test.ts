@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAnnual } from '../src/calc/annual';
+import { computeAnnual, type SalaryInput } from '../src/calc/annual';
 
 const GOLDEN = {
   cityId: 'shanghai' as const,
@@ -77,4 +77,48 @@ describe('computeAnnual 无奖金', () => {
     expect(new Set(r.schemes.map((s) => s.totalTax)).size).toBe(1);
   });
   it('无奖金行', () => expect(r.bonuses).toHaveLength(0));
+});
+
+describe('汇总与流水勾稽（spec §7.3）', () => {
+  const check = (input: SalaryInput) => {
+    const r = computeAnnual(input);
+    const rowTax =
+      r.monthlyRows.reduce((a, m) => a + m.tax, 0) +
+      r.bonuses.reduce((a, b) => a + b.tax, 0);
+    const rowNet =
+      r.monthlyRows.reduce((a, m) => a + m.net, 0) +
+      r.bonuses.reduce((a, b) => a + b.net, 0);
+    expect(rowTax).toBeCloseTo(r.totals.taxYear, 2);
+    expect(rowNet).toBeCloseTo(r.totals.netYear, 2);
+    return r;
+  };
+
+  it('金样勾稽', () => check(GOLDEN));
+  it('方案 B 更优场景勾稽', () =>
+    check({ ...GOLDEN, monthlySalary: 5000, bonus: 36001, salaryMonths: 12 }));
+  it('无奖金勾稽', () => check({ ...GOLDEN, salaryMonths: 12, bonus: 0 }));
+  it('16 薪勾稽', () => check({ ...GOLDEN, salaryMonths: 16 }));
+  it('杭州高薪 clamp 后勾稽', () => {
+    const r = check({
+      ...GOLDEN,
+      cityId: 'hangzhou',
+      monthlySalary: 50000,
+      salaryMonths: 13,
+      bonus: 100000,
+    });
+    expect(r.socialBase).toBe(25299);
+    expect(r.hfBase).toBe(42151);
+  });
+
+  it('B 推荐且 13 薪行同时展示', () => {
+    const r = computeAnnual({
+      ...GOLDEN,
+      monthlySalary: 5000,
+      bonus: 36001,
+      salaryMonths: 13,
+    });
+    expect(r.recommendedId).toBe('B');
+    expect(r.bonuses.map((b) => b.label)).toEqual(['13 薪']);
+    expect(r.monthlyRows[11].gross).toBe(5000 + 36001);
+  });
 });
