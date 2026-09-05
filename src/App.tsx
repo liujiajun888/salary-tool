@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CITY_LIST } from './policy';
+import { CITIES } from './policy';
 import { computeAnnual } from './calc/annual';
 import InputPanel from './components/InputPanel';
 import type { FormState } from './components/InputPanel';
@@ -10,7 +10,7 @@ export default function App() {
     monthlySalary: 20000,
     salaryMonths: 12,
     bonus: 0,
-    hfRatio: CITY_LIST[0].housingFund.defaultRatio,
+    hfRatio: CITIES.shanghai.housingFund.defaultRatio,
     hfSupplementRatio: 0,
     specialDeductionMonthly: 0,
     customSocialBase: null,
@@ -18,7 +18,7 @@ export default function App() {
   });
 
   const patch = (p: Partial<FormState>) => setForm((f) => ({ ...f, ...p }));
-  const policy = CITY_LIST.find((c) => c.id === form.cityId)!;
+  const policy = CITIES[form.cityId];
   const result = useMemo(() => computeAnnual(form), [form]);
 
   return (
