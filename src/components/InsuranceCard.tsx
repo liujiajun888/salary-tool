@@ -36,9 +36,9 @@ export default function InsuranceCard({ result }: { result: AnnualResult }) {
           {ROWS.map(({ key, label }) => (
             <tr key={key} className="border-t border-gray-200">
               <td className="py-1.5 text-left">{label}</td>
-              <td>{formatMoney(personal[key])}</td>
+              <td>{key === 'workInjury' ? <span className="text-gray-500">—</span> : formatMoney(personal[key])}</td>
               <td>{formatMoney(employer[key])}</td>
-              <td>{formatMoney(personal[key] * 12)}</td>
+              <td>{key === 'workInjury' ? <span className="text-gray-500">—</span> : formatMoney(personal[key] * 12)}</td>
               <td>{formatMoney(employer[key] * 12)}</td>
             </tr>
           ))}
