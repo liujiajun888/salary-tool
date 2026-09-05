@@ -114,6 +114,14 @@ export default function PlanComparePanel({ plans, canSave, onSave, onLoad, onDel
                   ))}
                 </tr>
                 <tr className="border-t border-gray-200">
+                  <td className="py-1.5 text-left">税后+公积金</td>
+                  {plans.map((p) => (
+                    <td key={p.id} className={cellCls(p.id === best.maxTotalId)}>
+                      {formatMoney(p.netYear + p.hfTotalYear)}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-t border-gray-200">
                   <td className="py-1.5 text-left">全年扣税</td>
                   {plans.map((p) => (
                     <td key={p.id} className={cellCls(p.id === best.minTaxId)}>

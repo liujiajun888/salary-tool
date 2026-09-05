@@ -38,7 +38,17 @@ describe('bestOf 各维度最优（平局取先保存者）', () => {
       maxNetId: 'b',
       maxHfId: 'c',
       minTaxId: 'b',
+      maxTotalId: 'c',
     });
+  });
+
+  it('税后+公积金合计维度独立判定', () => {
+    const plans = [
+      plan('a', { netYear: 100000, hfTotalYear: 60000 }),
+      plan('b', { netYear: 140000, hfTotalYear: 10000 }),
+      plan('c', { netYear: 110000, hfTotalYear: 70000 }),
+    ];
+    expect(bestOf(plans).maxTotalId).toBe('c');
   });
 
   it('平局取先保存者', () => {
@@ -47,7 +57,12 @@ describe('bestOf 各维度最优（平局取先保存者）', () => {
   });
 
   it('空列表返回全 null', () => {
-    expect(bestOf([])).toEqual({ maxNetId: null, maxHfId: null, minTaxId: null });
+    expect(bestOf([])).toEqual({
+      maxNetId: null,
+      maxHfId: null,
+      minTaxId: null,
+      maxTotalId: null,
+    });
   });
 });
 

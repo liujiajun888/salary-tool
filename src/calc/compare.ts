@@ -27,6 +27,7 @@ export interface PlanBest {
   maxNetId: string | null;
   maxHfId: string | null;
   minTaxId: string | null;
+  maxTotalId: string | null; // 税后到手 + 全年公积金 合计最高
 }
 
 export function bestOf(plans: PlanSnapshot[]): PlanBest {
@@ -39,6 +40,9 @@ export function bestOf(plans: PlanSnapshot[]): PlanBest {
     maxNetId: pick((a, b) => a.netYear > b.netYear),
     maxHfId: pick((a, b) => a.hfTotalYear > b.hfTotalYear),
     minTaxId: pick((a, b) => a.taxYear < b.taxYear),
+    maxTotalId: pick(
+      (a, b) => a.netYear + a.hfTotalYear > b.netYear + b.hfTotalYear,
+    ),
   };
 }
 
