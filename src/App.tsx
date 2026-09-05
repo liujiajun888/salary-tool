@@ -5,6 +5,9 @@ import InputPanel from './components/InputPanel';
 import type { FormState } from './components/InputPanel';
 import SummaryCards from './components/SummaryCards';
 import MonthlyTable from './components/MonthlyTable';
+import InsuranceCard from './components/InsuranceCard';
+import MonthlyChart from './components/MonthlyChart';
+import Footer from './components/Footer';
 
 export default function App() {
   const [form, setForm] = useState<FormState>({
@@ -38,9 +41,12 @@ export default function App() {
           <div className="space-y-6">
             <SummaryCards result={result} />
             <MonthlyTable result={result} />
+            <InsuranceCard result={result} />
+            <MonthlyChart result={result} />
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
