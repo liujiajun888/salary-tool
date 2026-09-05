@@ -121,4 +121,13 @@ describe('汇总与流水勾稽（spec §7.3）', () => {
     expect(r.bonuses.map((b) => b.label)).toEqual(['13 薪']);
     expect(r.monthlyRows[11].gross).toBe(5000 + 36001);
   });
+
+  it('3 位小数输入在入口取整后仍勾稽', () => {
+    const r = computeAnnual({ ...GOLDEN, salaryMonths: 12, monthlySalary: 12345.678, bonus: 88888.885 });
+    const rowGross =
+      r.monthlyRows.reduce((a, m) => a + m.gross, 0) +
+      r.bonuses.reduce((a, b) => a + b.gross, 0);
+    expect(rowGross).toBeCloseTo(r.totals.grossYear, 2);
+    expect(r.totals.grossYear).toBeCloseTo(2 * 12345.68 + 10 * 12345.68 + 88888.89, 2);
+  });
 });

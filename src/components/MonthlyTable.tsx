@@ -16,38 +16,38 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
       <table className="w-full min-w-[560px] text-right text-sm">
         <thead>
           <tr className="text-gray-500">
-            <th className="py-1 text-left font-normal">月份</th>
-            <th className="py-1 font-normal">税前</th>
-            <th className="py-1 font-normal">三险一金（个人）</th>
-            <th className="py-1 font-normal">个税</th>
-            <th className="py-1 font-normal">税后</th>
+            <th scope="col" className="py-1 text-left font-normal">月份</th>
+            <th scope="col" className="py-1 font-normal">税前</th>
+            <th scope="col" className="py-1 font-normal">三险一金（个人）</th>
+            <th scope="col" className="py-1 font-normal">个税</th>
+            <th scope="col" className="py-1 font-normal">税后</th>
           </tr>
         </thead>
         <tbody>
           {monthlyRows.map((r) => (
-            <tr key={r.month} className="border-t">
+            <tr key={r.month} className="border-t border-gray-200">
               <td className="py-1.5 text-left">{r.month} 月</td>
               <td>{formatMoney(r.gross)}</td>
               <td className="text-blue-600">{formatMoney(r.personalTotal)}</td>
               <td className="text-red-600">{formatMoney(r.tax)}</td>
-              <td className="font-medium text-green-600">{formatMoney(r.net)}</td>
+              <td className="font-medium text-green-700">{formatMoney(r.net)}</td>
             </tr>
           ))}
           {bonuses.map((b) => (
-            <tr key={b.label} className="border-t bg-amber-50">
+            <tr key={b.label} className="border-t border-gray-200 bg-amber-50">
               <td className="py-1.5 text-left">{b.label}</td>
               <td>{formatMoney(b.gross)}</td>
-              <td className="text-gray-400">—</td>
+              <td className="text-gray-500">—</td>
               <td className="text-red-600">{formatMoney(b.tax)}</td>
-              <td className="font-medium text-green-600">{formatMoney(b.net)}</td>
+              <td className="font-medium text-green-700">{formatMoney(b.net)}</td>
             </tr>
           ))}
-          <tr className="border-t-2 font-semibold">
+          <tr className="border-t-2 border-gray-200 font-semibold">
             <td className="py-1.5 text-left">合计</td>
             <td>{formatMoney(grossSum)}</td>
             <td className="text-blue-600">{formatMoney(dedSum)}</td>
             <td className="text-red-600">{formatMoney(taxSum)}</td>
-            <td className="text-green-600">{formatMoney(netSum)}</td>
+            <td className="text-green-700">{formatMoney(netSum)}</td>
           </tr>
         </tbody>
       </table>

@@ -66,6 +66,8 @@ const sum = (xs: number[]) => round2(xs.reduce((a, b) => a + b, 0));
 
 export function computeAnnual(input: SalaryInput): AnnualResult {
   const policy = CITIES[input.cityId];
+  const monthlySalary = round2(input.monthlySalary);
+  const bonus = round2(Math.max(0, input.bonus));
   const socialBase = resolveBase(
     input.monthlySalary,
     input.customSocialBase,
@@ -92,15 +94,14 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   ]);
 
   const months: MonthInput[] = Array.from({ length: 12 }, () => ({
-    gross: round2(input.monthlySalary),
+    gross: monthlySalary,
     personalDeduction: personalMonthly,
     specialDeduction: input.specialDeductionMonthly,
   }));
 
-  const bonus = Math.max(0, input.bonus);
   const extraSalaries = Array.from(
     { length: Math.max(0, input.salaryMonths - 12) },
-    () => input.monthlySalary,
+    () => monthlySalary,
   );
 
   const bonusRow = (label: string, gross: number): BonusRow => {
@@ -130,7 +131,7 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   const taxesC = taxesA;
   const bonusesC: BonusRow[] = pool > 0 ? [bonusRow('奖金合并', pool)] : [];
 
-  const grossYear = round2(input.monthlySalary * 12 + pool);
+  const grossYear = round2(monthlySalary * 12 + pool);
 
   const buildScheme = (
     id: SchemeResult['id'],
