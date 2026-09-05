@@ -56,3 +56,19 @@ describe('舍入精度', () => {
     expect(personal.unemployment).toBe(16.03);
   });
 });
+
+describe('参数可区分性与自定义基数语义', () => {
+  it('socialBase 与 hfBase 各自独立生效，基本/补充公积金比例不混淆', () => {
+    const { personal, employer } = monthlyInsurance(CITIES.shanghai, 10000, 5000, 0.07, 0.05);
+    expect(personal.pension).toBe(800);
+    expect(personal.hfBasic).toBe(350);
+    expect(personal.hfSupplement).toBe(250);
+    expect(employer.hfSupplement).toBe(250);
+  });
+
+  it('范围内的自定义基数生效', () =>
+    expect(resolveBase(30000, 20000, 7546, 37731)).toBe(20000));
+
+  it('自定义基数为 0 时按 ?? 语义 clamp 到下限（而非回退月薪）', () =>
+    expect(resolveBase(30000, 0, 7546, 37731)).toBe(7546));
+});

@@ -19,7 +19,7 @@ export interface InsuranceBreakdown {
   hfSupplement: number;
 }
 
-// 精确四舍五入到分：rate 转整数基点后 base×bp 恒为精确整数，
+// 精确四舍五入到分：rate 转整数基点后，整数基数下 base×bp 恒为精确整数，
 // 除以 100 后半分必精确落点，Math.round 即教科书四舍五入
 function byRate(base: number, rate: number): number {
   const bp = Math.round(rate * 10000);
@@ -51,6 +51,7 @@ export function monthlyInsurance(
   const hfBasic = round0(hfBase * hfRatio);
   const hfSupplement = round0(hfBase * hfSupplementRatio);
   return {
+  // 个人不缴工伤，强制 0 以防政策数据误配
     personal: { ...p, workInjury: 0, hfBasic, hfSupplement },
     employer: { ...e, hfBasic, hfSupplement },
   };
