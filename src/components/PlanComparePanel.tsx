@@ -1,4 +1,4 @@
-import { MAX_PLANS, bestOf } from '../calc/compare';
+import { MAX_PLANS, bestOf, sortByTotalDesc } from '../calc/compare';
 import type { PlanSnapshot } from '../calc/compare';
 import { formatMoney } from '../calc/format';
 
@@ -15,6 +15,10 @@ const cellCls = (best: boolean) =>
 
 export default function PlanComparePanel({ plans, canSave, onSave, onLoad, onDelete }: Props) {
   const best = bestOf(plans);
+  const tablePlans = sortByTotalDesc(plans);
+  const maxTotal = plans.length
+    ? Math.max(...plans.map((p) => p.netYear + p.hfTotalYear))
+    : 0;
   const byNet = [...plans].sort((a, b) => b.netYear - a.netYear);
   const topNet = byNet[0];
   const secondNet = byNet[1];
@@ -91,7 +95,7 @@ export default function PlanComparePanel({ plans, canSave, onSave, onLoad, onDel
               <thead>
                 <tr className="text-gray-500">
                   <th scope="col" className="py-1 text-left font-normal">维度</th>
-                  {plans.map((p) => (
+                  {tablePlans.map((p) => (
                     <th scope="col" key={p.id} className="py-1 font-normal">{p.name}</th>
                   ))}
                 </tr>
@@ -99,7 +103,7 @@ export default function PlanComparePanel({ plans, canSave, onSave, onLoad, onDel
               <tbody>
                 <tr className="border-t border-gray-200">
                   <td className="py-1.5 text-left">税后到手</td>
-                  {plans.map((p) => (
+                  {tablePlans.map((p) => (
                     <td key={p.id} className={cellCls(p.id === best.maxNetId)}>
                       {formatMoney(p.netYear)}
                     </td>
@@ -107,7 +111,7 @@ export default function PlanComparePanel({ plans, canSave, onSave, onLoad, onDel
                 </tr>
                 <tr className="border-t border-gray-200">
                   <td className="py-1.5 text-left">全年公积金</td>
-                  {plans.map((p) => (
+                  {tablePlans.map((p) => (
                     <td key={p.id} className={cellCls(p.id === best.maxHfId)}>
                       {formatMoney(p.hfTotalYear)}
                     </td>
@@ -115,15 +119,27 @@ export default function PlanComparePanel({ plans, canSave, onSave, onLoad, onDel
                 </tr>
                 <tr className="border-t border-gray-200">
                   <td className="py-1.5 text-left">税后+公积金</td>
-                  {plans.map((p) => (
+                  {tablePlans.map((p) => (
                     <td key={p.id} className={cellCls(p.id === best.maxTotalId)}>
                       {formatMoney(p.netYear + p.hfTotalYear)}
                     </td>
                   ))}
                 </tr>
                 <tr className="border-t border-gray-200">
+                  <td className="py-1.5 text-left">与最高之差</td>
+                  {tablePlans.map((p) => (
+                    <td key={p.id} className="py-1.5">
+                      {p.id === best.maxTotalId ? (
+                        <span className="text-gray-500">—</span>
+                      ) : (
+                        `-${formatMoney(maxTotal - p.netYear - p.hfTotalYear)}`
+                      )}
+                    </td>
+                  ))}
+                </tr>
+                <tr className="border-t border-gray-200">
                   <td className="py-1.5 text-left">全年扣税</td>
-                  {plans.map((p) => (
+                  {tablePlans.map((p) => (
                     <td key={p.id} className={cellCls(p.id === best.minTaxId)}>
                       {formatMoney(p.taxYear)}
                     </td>

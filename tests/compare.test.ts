@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bestOf, nextPlanName, describeInput, MAX_PLANS } from '../src/calc/compare';
+import { bestOf, nextPlanName, describeInput, sortByTotalDesc, MAX_PLANS } from '../src/calc/compare';
 import type { PlanSnapshot } from '../src/calc/compare';
 import type { SalaryInput } from '../src/calc/annual';
 
@@ -94,4 +94,30 @@ describe('describeInput 参数摘要', () => {
   });
 });
 
-it('MAX_PLANS 为 3', () => expect(MAX_PLANS).toBe(3));
+describe('sortByTotalDesc 按税后+公积金降序', () => {
+  it('按合计从大到小排列', () => {
+    const plans = [
+      plan('a', { netYear: 100000, hfTotalYear: 60000 }),
+      plan('b', { netYear: 140000, hfTotalYear: 10000 }),
+      plan('c', { netYear: 110000, hfTotalYear: 70000 }),
+    ];
+    expect(sortByTotalDesc(plans).map((p) => p.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('平局保持保存顺序（稳定排序）', () => {
+    const plans = [
+      plan('a', { netYear: 100000, hfTotalYear: 50000 }),
+      plan('b', { netYear: 120000, hfTotalYear: 30000 }),
+      plan('c', { netYear: 90000, hfTotalYear: 60000 }),
+    ];
+    expect(sortByTotalDesc(plans).map((p) => p.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('不修改原数组', () => {
+    const plans = [plan('a', { netYear: 100000 }), plan('b', { netYear: 200000 })];
+    sortByTotalDesc(plans);
+    expect(plans.map((p) => p.id)).toEqual(['a', 'b']);
+  });
+});
+
+it('MAX_PLANS 为 5', () => expect(MAX_PLANS).toBe(5));

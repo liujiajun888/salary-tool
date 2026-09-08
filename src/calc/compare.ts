@@ -1,7 +1,7 @@
 import type { SalaryInput } from './annual';
 import { formatMoney, formatPercent } from './format';
 
-export const MAX_PLANS = 3;
+export const MAX_PLANS = 5;
 
 export interface PlanSnapshot {
   id: string;
@@ -44,6 +44,12 @@ export function bestOf(plans: PlanSnapshot[]): PlanBest {
       (a, b) => a.netYear + a.hfTotalYear > b.netYear + b.hfTotalYear,
     ),
   };
+}
+
+export function sortByTotalDesc(plans: PlanSnapshot[]): PlanSnapshot[] {
+  return [...plans].sort(
+    (a, b) => b.netYear + b.hfTotalYear - (a.netYear + a.hfTotalYear),
+  );
 }
 
 export function describeInput(input: SalaryInput): string {
