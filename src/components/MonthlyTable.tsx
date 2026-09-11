@@ -9,12 +9,12 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
   const netSum = grossSum - dedSum - taxSum;
 
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] animate-[fade-in-up_0.4s_ease-out]">
-      <h2 className="mb-4 text-sm font-semibold text-white tracking-wide">月度明细</h2>
+    <section className="rounded-2xl border border-gray-100/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_6px_rgba(0,0,0,0.02)] animate-[fade-in-up_0.4s_ease-out]">
+      <h2 className="mb-4 text-sm font-semibold text-slate-700 tracking-wide">月度明细</h2>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-right text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06] text-xs text-slate-500 uppercase tracking-wider">
+            <tr className="border-b border-gray-100 text-xs text-slate-400 uppercase tracking-wider">
               <th scope="col" className="py-3 text-left font-medium">月份</th>
               <th scope="col" className="py-3 font-medium">税前</th>
               <th scope="col" className="py-3 font-medium">三险一金</th>
@@ -24,26 +24,26 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
           </thead>
           <tbody>
             {monthlyRows.map((r) => (
-              <tr key={r.month} className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]">
+              <tr key={r.month} className="border-b border-gray-50 transition-colors hover:bg-gray-50/40">
                 <td className="py-2.5 text-left text-slate-400">{r.month} 月</td>
-                <td className="text-slate-300">{formatMoney(r.gross)}</td>
-                <td className="text-info-light">{formatMoney(r.personalTotal)}</td>
+                <td className="text-slate-600">{formatMoney(r.gross)}</td>
+                <td className="text-info">{formatMoney(r.personalTotal)}</td>
                 <td className="text-negative">{formatMoney(r.tax)}</td>
-                <td className="font-medium text-positive">{formatMoney(r.net)}</td>
+                <td className="font-semibold text-positive">{formatMoney(r.net)}</td>
               </tr>
             ))}
             {bonuses.map((b) => (
-              <tr key={b.label} className="border-b border-white/[0.04] bg-accent/[0.03]">
-                <td className="py-2.5 text-left text-accent-light">{b.label}</td>
-                <td className="text-slate-300">{formatMoney(b.gross)}</td>
-                <td className="text-slate-500">—</td>
+              <tr key={b.label} className="border-b border-gray-50 bg-accent/[0.02]">
+                <td className="py-2.5 text-left text-accent-dark font-medium">{b.label}</td>
+                <td className="text-slate-600">{formatMoney(b.gross)}</td>
+                <td className="text-slate-300">—</td>
                 <td className="text-negative">{formatMoney(b.tax)}</td>
-                <td className="font-medium text-positive">{formatMoney(b.net)}</td>
+                <td className="font-semibold text-positive">{formatMoney(b.net)}</td>
               </tr>
             ))}
             <tr className="text-sm font-semibold">
-              <td className="py-3 text-left text-slate-200">合计</td>
-              <td className="text-slate-200">{formatMoney(grossSum)}</td>
+              <td className="py-3 text-left text-slate-700">合计</td>
+              <td className="text-slate-700">{formatMoney(grossSum)}</td>
               <td className="text-info">{formatMoney(dedSum)}</td>
               <td className="text-negative">{formatMoney(taxSum)}</td>
               <td className="text-positive">{formatMoney(netSum)}</td>

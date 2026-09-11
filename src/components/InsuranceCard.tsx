@@ -17,15 +17,13 @@ const sumAll = (b: InsuranceBreakdown) =>
 export default function InsuranceCard({ result }: { result: AnnualResult }) {
   const { personal, employer } = result.insurance;
   return (
-    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] animate-[fade-in-up_0.4s_ease-out]">
-      <h2 className="mb-1 text-sm font-semibold text-white tracking-wide">社保公积金明细</h2>
-      <p className="mb-4 text-xs text-slate-500">
-        社保基数 ¥{formatMoney(result.socialBase)} · 公积金基数 ¥{formatMoney(result.hfBase)} · 工伤费率因行业而异，取典型值展示
-      </p>
+    <section className="rounded-2xl border border-gray-100/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_6px_rgba(0,0,0,0.02)] animate-[fade-in-up_0.4s_ease-out]">
+      <h2 className="mb-1 text-sm font-semibold text-slate-700 tracking-wide">社保公积金明细</h2>
+      <p className="mb-4 text-xs text-slate-400">基数 ¥{formatMoney(result.socialBase)} · 公积金 ¥{formatMoney(result.hfBase)} · 工伤取典型费率</p>
       <div className="overflow-x-auto">
         <table className="w-full text-right text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06] text-xs text-slate-500 uppercase tracking-wider">
+            <tr className="border-b border-gray-100 text-xs text-slate-400 uppercase tracking-wider">
               <th scope="col" className="py-3 text-left font-medium">险种</th>
               <th scope="col" className="py-3 font-medium">个人/月</th>
               <th scope="col" className="py-3 font-medium">单位/月</th>
@@ -35,18 +33,18 @@ export default function InsuranceCard({ result }: { result: AnnualResult }) {
           </thead>
           <tbody>
             {ROWS.map(({ key, label }) => (
-              <tr key={key} className="border-b border-white/[0.04]">
-                <td className="py-2.5 text-left text-slate-300">{label}</td>
-                <td>{key === 'workInjury' ? <span className="text-slate-500">—</span> : <span className="text-slate-300">{formatMoney(personal[key])}</span>}</td>
-                <td className="text-slate-300">{formatMoney(employer[key])}</td>
-                <td>{key === 'workInjury' ? <span className="text-slate-500">—</span> : <span className="text-slate-300">{formatMoney(personal[key] * 12)}</span>}</td>
-                <td className="text-slate-300">{formatMoney(employer[key] * 12)}</td>
+              <tr key={key} className="border-b border-gray-50">
+                <td className="py-2.5 text-left text-slate-600">{label}</td>
+                <td>{key === 'workInjury' ? <span className="text-slate-300">—</span> : <span className="text-slate-600">{formatMoney(personal[key])}</span>}</td>
+                <td className="text-slate-600">{formatMoney(employer[key])}</td>
+                <td>{key === 'workInjury' ? <span className="text-slate-300">—</span> : <span className="text-slate-600">{formatMoney(personal[key] * 12)}</span>}</td>
+                <td className="text-slate-600">{formatMoney(employer[key] * 12)}</td>
               </tr>
             ))}
             <tr className="text-sm font-semibold">
-              <td className="py-3 text-left text-slate-200">合计</td>
-              <td className="text-info-light">{formatMoney(sumAll(personal))}</td>
-              <td className="text-info-light">{formatMoney(sumAll(employer))}</td>
+              <td className="py-3 text-left text-slate-700">合计</td>
+              <td className="text-info">{formatMoney(sumAll(personal))}</td>
+              <td className="text-info">{formatMoney(sumAll(employer))}</td>
               <td className="text-info">{formatMoney(result.totals.personalTotalYear)}</td>
               <td className="text-info">{formatMoney(result.totals.employerTotalYear)}</td>
             </tr>
