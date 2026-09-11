@@ -17,40 +17,42 @@ const sumAll = (b: InsuranceBreakdown) =>
 export default function InsuranceCard({ result }: { result: AnnualResult }) {
   const { personal, employer } = result.insurance;
   return (
-    <section className="rounded-xl bg-white p-5 shadow-sm">
-      <h2 className="mb-1 font-semibold">社保公积金明细</h2>
-      <p className="mb-3 text-xs text-gray-500">
+    <section className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] animate-[fade-in-up_0.4s_ease-out]">
+      <h2 className="mb-1 text-sm font-semibold text-white tracking-wide">社保公积金明细</h2>
+      <p className="mb-4 text-xs text-slate-500">
         社保基数 ¥{formatMoney(result.socialBase)} · 公积金基数 ¥{formatMoney(result.hfBase)} · 工伤费率因行业而异，取典型值展示
       </p>
-      <table className="w-full text-right text-sm">
-        <thead>
-          <tr className="text-gray-500">
-            <th scope="col" className="text-left font-normal">险种</th>
-            <th scope="col" className="font-normal">个人/月</th>
-            <th scope="col" className="font-normal">单位/月</th>
-            <th scope="col" className="font-normal">个人/年</th>
-            <th scope="col" className="font-normal">单位/年</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ROWS.map(({ key, label }) => (
-            <tr key={key} className="border-t border-gray-200">
-              <td className="py-1.5 text-left">{label}</td>
-              <td>{key === 'workInjury' ? <span className="text-gray-500">—</span> : formatMoney(personal[key])}</td>
-              <td>{formatMoney(employer[key])}</td>
-              <td>{key === 'workInjury' ? <span className="text-gray-500">—</span> : formatMoney(personal[key] * 12)}</td>
-              <td>{formatMoney(employer[key] * 12)}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-right text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.06] text-xs text-slate-500 uppercase tracking-wider">
+              <th scope="col" className="py-3 text-left font-medium">险种</th>
+              <th scope="col" className="py-3 font-medium">个人/月</th>
+              <th scope="col" className="py-3 font-medium">单位/月</th>
+              <th scope="col" className="py-3 font-medium">个人/年</th>
+              <th scope="col" className="py-3 font-medium">单位/年</th>
             </tr>
-          ))}
-          <tr className="border-t-2 border-gray-200 font-semibold">
-            <td className="py-1.5 text-left">合计</td>
-            <td>{formatMoney(sumAll(personal))}</td>
-            <td>{formatMoney(sumAll(employer))}</td>
-            <td>{formatMoney(result.totals.personalTotalYear)}</td>
-            <td>{formatMoney(result.totals.employerTotalYear)}</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {ROWS.map(({ key, label }) => (
+              <tr key={key} className="border-b border-white/[0.04]">
+                <td className="py-2.5 text-left text-slate-300">{label}</td>
+                <td>{key === 'workInjury' ? <span className="text-slate-500">—</span> : <span className="text-slate-300">{formatMoney(personal[key])}</span>}</td>
+                <td className="text-slate-300">{formatMoney(employer[key])}</td>
+                <td>{key === 'workInjury' ? <span className="text-slate-500">—</span> : <span className="text-slate-300">{formatMoney(personal[key] * 12)}</span>}</td>
+                <td className="text-slate-300">{formatMoney(employer[key] * 12)}</td>
+              </tr>
+            ))}
+            <tr className="text-sm font-semibold">
+              <td className="py-3 text-left text-slate-200">合计</td>
+              <td className="text-info-light">{formatMoney(sumAll(personal))}</td>
+              <td className="text-info-light">{formatMoney(sumAll(employer))}</td>
+              <td className="text-info">{formatMoney(result.totals.personalTotalYear)}</td>
+              <td className="text-info">{formatMoney(result.totals.employerTotalYear)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

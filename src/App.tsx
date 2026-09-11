@@ -58,9 +58,17 @@ export default function App() {
   const handleDeletePlan = (id: string) => setPlans((ps) => ps.filter((p) => p.id !== id));
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <main className="mx-auto max-w-6xl px-4 py-8 xl:max-w-[1600px]">
-        <h1 className="mb-6 text-2xl font-bold">工资计算器 · 2026</h1>
+    <div className="min-h-screen">
+      <main className="mx-auto max-w-6xl px-4 py-8 xl:max-w-[1600px] animate-[fade-in-up_0.4s_ease-out]">
+        <header className="mb-8 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-dark text-lg font-bold text-white shadow-lg shadow-accent/20">
+            ¥
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight">薪资计算器</h1>
+            <p className="text-xs text-slate-400 mt-0.5">按 2026 年沪杭政策估算 · 仅供参考</p>
+          </div>
+        </header>
         <div className="grid items-start gap-6 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_340px]">
           <InputPanel
             form={form}
@@ -73,7 +81,7 @@ export default function App() {
             <SummaryCards result={result} />
             <MonthlyTable result={result} />
             <InsuranceCard result={result} />
-            <Suspense fallback={<div className="h-72 animate-pulse rounded-xl bg-white shadow-sm" />}>
+            <Suspense fallback={<div className="h-72 animate-pulse rounded-xl bg-white/5 backdrop-blur-xl border border-white/10" />}>
               <MonthlyChart result={result} />
             </Suspense>
           </div>
