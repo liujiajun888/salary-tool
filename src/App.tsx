@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { CITIES } from './policy';
 import { computeAnnual } from './calc/annual';
 import { MAX_PLANS, describeInput, planName } from './calc/compare';
@@ -14,14 +14,35 @@ import Footer from './components/Footer';
 
 const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
 
+const FORM_KEY = 'salary-tool-form';
+const PLANS_KEY = 'salary-tool-plans';
+
+function load(k: string) {
+  try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+
+const defaultForm: FormState = {
+  cityId: 'shanghai', monthlySalary: 20000, salaryMonths: 12, bonus: 0,
+  hfRatio: CITIES.shanghai.housingFund.defaultRatio, hfSupplementRatio: 0,
+  specialDeductionMonthly: 0, customSocialBase: null, customHfBase: null,
+  companyName: '',
+};
+
+function mergeForm(saved: unknown): FormState {
+  if (!saved || typeof saved !== 'object') return defaultForm;
+  return { ...defaultForm, ...saved };
+}
+
 export default function App() {
-  const [form, setForm] = useState<FormState>({
-    cityId: 'shanghai', monthlySalary: 20000, salaryMonths: 12, bonus: 0,
-    hfRatio: CITIES.shanghai.housingFund.defaultRatio, hfSupplementRatio: 0,
-    specialDeductionMonthly: 0, customSocialBase: null, customHfBase: null,
-    companyName: '',
+  const [form, setForm] = useState<FormState>(() => mergeForm(load(FORM_KEY)));
+  const [plans, setPlans] = useState<PlanSnapshot[]>(() => {
+    const p = load(PLANS_KEY);
+    return Array.isArray(p) ? p : [];
   });
-  const [plans, setPlans] = useState<PlanSnapshot[]>([]);
+
+  useEffect(() => { try { localStorage.setItem(FORM_KEY, JSON.stringify(form)); } catch { /* noop */ } }, [form]);
+  useEffect(() => { try { localStorage.setItem(PLANS_KEY, JSON.stringify(plans)); } catch { /* noop */ } }, [plans]);
+
   const patch = (p: Partial<FormState>) => setForm((f) => ({ ...f, ...p }));
   const policy = CITIES[form.cityId];
   const result = useMemo(() => computeAnnual(form), [form]);
@@ -46,7 +67,7 @@ export default function App() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-dark text-base font-bold text-white shadow-[0_2px_12px_rgba(6,182,212,0.3)]">¥</div>
           <div>
             <h1 className="text-xl font-bold text-slate-800 tracking-tight">薪资计算器</h1>
-            <p className="text-xs text-slate-400 mt-0.5">按 2026 年沪杭政策估算 · 年终奖三种计税方案对比</p>
+            <p className="text-xs text-slate-400 mt-0.5">按 2026 年沪杭政策估算 · 数据会自动保存在本地</p>
           </div>
         </header>
         <div className="grid items-start gap-6 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_340px]">
