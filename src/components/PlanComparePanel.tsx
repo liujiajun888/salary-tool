@@ -1,6 +1,6 @@
 import { MAX_PLANS, bestOf, sortByTotalDesc } from '../calc/compare';
 import type { PlanSnapshot } from '../calc/compare';
-import { formatMoney } from '../calc/format';
+import { formatMoney, round2 } from '../calc/format';
 
 interface Props {
   plans: PlanSnapshot[];
@@ -127,15 +127,19 @@ export default function PlanComparePanel({ plans, canSave, onSave, onLoad, onDel
                 </tr>
                 <tr className="border-t border-gray-200">
                   <td className="py-1.5 text-left">与最高之差</td>
-                  {tablePlans.map((p) => (
-                    <td key={p.id} className="py-1.5">
-                      {p.id === best.maxTotalId ? (
-                        <span className="text-gray-500">—</span>
-                      ) : (
-                        `-${formatMoney(maxTotal - p.netYear - p.hfTotalYear)}`
-                      )}
-                    </td>
-                  ))}
+                  {tablePlans.map((p) => {
+                    const n = p.netYear + p.hfTotalYear;
+                    const diff = round2(maxTotal - n);
+                    return (
+                      <td key={p.id} className="py-1.5">
+                        {diff < 0.005 ? (
+                          <span className="text-gray-500">—</span>
+                        ) : (
+                          `-${formatMoney(diff)}`
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
                 <tr className="border-t border-gray-200">
                   <td className="py-1.5 text-left">全年扣税</td>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bestOf, nextPlanName, describeInput, sortByTotalDesc, MAX_PLANS } from '../src/calc/compare';
+import { bestOf, nextPlanName, describeInput, sortByTotalDesc, planName, MAX_PLANS } from '../src/calc/compare';
 import type { PlanSnapshot } from '../src/calc/compare';
 import type { SalaryInput } from '../src/calc/annual';
 
@@ -18,6 +18,7 @@ const baseInput: SalaryInput = {
 const plan = (id: string, over: Partial<PlanSnapshot> = {}): PlanSnapshot => ({
   id,
   name: `方案 ${id}`,
+  companyName: '',
   cityName: '上海',
   summary: '摘要',
   netYear: 100000,
@@ -118,6 +119,17 @@ describe('sortByTotalDesc 按税后+公积金降序', () => {
     sortByTotalDesc(plans);
     expect(plans.map((p) => p.id)).toEqual(['a', 'b']);
   });
+});
+
+describe('planName 方案命名（公司名优先，空则回退编号）', () => {
+  it('有公司名时用公司名', () =>
+    expect(planName('腾讯', [])).toBe('腾讯'));
+  it('公司名去首尾空格', () =>
+    expect(planName('  字节跳动  ', [])).toBe('字节跳动'));
+  it('空字符串回退方案编号', () =>
+    expect(planName('', [plan('x', { name: '方案 1' })])).toBe('方案 2'));
+  it('纯空格同样回退方案编号', () =>
+    expect(planName('   ', [plan('x', { name: '方案 1' })])).toBe('方案 2'));
 });
 
 it('MAX_PLANS 为 5', () => expect(MAX_PLANS).toBe(5));

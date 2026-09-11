@@ -5,7 +5,8 @@ export const MAX_PLANS = 5;
 
 export interface PlanSnapshot {
   id: string;
-  name: string;
+  name: string; // 展示名：公司名或回退的方案编号
+  companyName: string; // 用户输入的公司名（可为空，载入回填用）
   cityName: string;
   summary: string;
   netYear: number; // 税后薪资 + 税后年终奖（推荐方案口径）
@@ -21,6 +22,11 @@ export function nextPlanName(existing: PlanSnapshot[]): string {
   let n = 1;
   while (used.has(n)) n += 1;
   return `方案 ${n}`;
+}
+
+export function planName(companyName: string, existing: PlanSnapshot[]): string {
+  const trimmed = companyName.trim();
+  return trimmed || nextPlanName(existing);
 }
 
 export interface PlanBest {

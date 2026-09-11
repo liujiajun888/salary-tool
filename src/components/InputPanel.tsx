@@ -5,7 +5,7 @@ import type { CityPolicy } from '../policy/types';
 import { formatMoney, formatPercent } from '../calc/format';
 import type { SalaryInput } from '../calc/annual';
 
-export type FormState = SalaryInput;
+export type FormState = SalaryInput & { companyName: string };
 
 interface Props {
   form: FormState;
@@ -77,6 +77,17 @@ export default function InputPanel({ form, policy, socialBase, hfBase, patch }: 
 
   return (
     <section className="space-y-4 rounded-xl bg-white p-5 shadow-sm">
+      <div>
+        <label className={labelCls} htmlFor="company-name">公司名称</label>
+        <input
+          id="company-name"
+          type="text"
+          className={inputCls}
+          placeholder="选填，保存方案时作为方案名称"
+          value={form.companyName}
+          onChange={(e) => patch({ companyName: e.target.value })}
+        />
+      </div>
       <div>
         <span className={labelCls}>工作城市</span>
         <div className="flex gap-2">

@@ -1,7 +1,7 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { CITIES } from './policy';
 import { computeAnnual } from './calc/annual';
-import { MAX_PLANS, describeInput, nextPlanName } from './calc/compare';
+import { MAX_PLANS, describeInput, planName } from './calc/compare';
 import type { PlanSnapshot } from './calc/compare';
 import { round2 } from './calc/format';
 import InputPanel from './components/InputPanel';
@@ -25,6 +25,7 @@ export default function App() {
     specialDeductionMonthly: 0,
     customSocialBase: null,
     customHfBase: null,
+    companyName: '',
   });
   const [plans, setPlans] = useState<PlanSnapshot[]>([]);
 
@@ -39,7 +40,8 @@ export default function App() {
         ...ps,
         {
           id: crypto.randomUUID(),
-          name: nextPlanName(ps),
+          name: planName(form.companyName, ps),
+          companyName: form.companyName.trim(),
           cityName: policy.name,
           summary: describeInput(form),
           netYear: result.totals.netYear,
@@ -51,7 +53,8 @@ export default function App() {
     });
   };
 
-  const handleLoadPlan = (plan: PlanSnapshot) => setForm({ ...plan.input });
+  const handleLoadPlan = (plan: PlanSnapshot) =>
+    setForm({ ...plan.input, companyName: plan.companyName });
   const handleDeletePlan = (id: string) => setPlans((ps) => ps.filter((p) => p.id !== id));
 
   return (
