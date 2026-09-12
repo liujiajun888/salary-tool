@@ -39,6 +39,7 @@ export default function App() {
     const p = load(PLANS_KEY);
     return Array.isArray(p) ? p : [];
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => { try { localStorage.setItem(FORM_KEY, JSON.stringify(form)); } catch { /* noop */ } }, [form]);
   useEffect(() => { try { localStorage.setItem(PLANS_KEY, JSON.stringify(plans)); } catch { /* noop */ } }, [plans]);
@@ -47,18 +48,40 @@ export default function App() {
   const policy = CITIES[form.cityId];
   const result = useMemo(() => computeAnnual(form), [form]);
 
-  const handleSavePlan = () => setPlans((ps) => {
-    if (ps.length >= MAX_PLANS) return ps;
-    return [...ps, {
-      id: crypto.randomUUID(), name: planName(form.companyName, ps),
-      companyName: form.companyName.trim(), cityName: policy.name,
-      summary: describeInput(form), netYear: result.totals.netYear,
-      hfTotalYear: round2(result.totals.personalHfYear + result.totals.employerHfYear),
-      taxYear: result.totals.taxYear, input: form,
-    }];
+  const buildPlan = (id: string, name: string): PlanSnapshot => ({
+    id, name,
+    companyName: form.companyName.trim(), cityName: policy.name,
+    summary: describeInput(form), netYear: result.totals.netYear,
+    hfTotalYear: round2(result.totals.personalHfYear + result.totals.employerHfYear),
+    taxYear: result.totals.taxYear, input: form,
   });
-  const handleLoadPlan = (plan: PlanSnapshot) => setForm({ ...plan.input, companyName: plan.companyName });
-  const handleDeletePlan = (id: string) => setPlans((ps) => ps.filter((p) => p.id !== id));
+
+  const handleSavePlan = () => {
+    setPlans((ps) => {
+      if (editingId) {
+        const rest = ps.filter((p) => p.id !== editingId);
+        const updated = buildPlan(editingId, planName(form.companyName, rest));
+        return ps.map((p) => (p.id === editingId ? updated : p));
+      }
+      if (ps.length >= MAX_PLANS) return ps;
+      return [...ps, buildPlan(crypto.randomUUID(), planName(form.companyName, ps))];
+    });
+    setEditingId(null);
+  };
+
+  const handleEditPlan = (plan: PlanSnapshot) => {
+    setForm({ ...plan.input, companyName: plan.companyName });
+    setEditingId(plan.id);
+  };
+  const handleLoadPlan = (plan: PlanSnapshot) => {
+    setForm({ ...plan.input, companyName: plan.companyName });
+    setEditingId(null);
+  };
+  const handleDeletePlan = (id: string) => {
+    setPlans((ps) => ps.filter((p) => p.id !== id));
+    if (editingId === id) setEditingId(null);
+  };
+  const handleCancelEdit = () => setEditingId(null);
 
   return (
     <div className="min-h-screen">
@@ -67,7 +90,7 @@ export default function App() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-dark text-base font-bold text-white shadow-[0_2px_12px_rgba(6,182,212,0.3)]">¥</div>
           <div>
             <h1 className="text-xl font-bold text-slate-800 tracking-tight">薪资计算器</h1>
-            <p className="text-xs text-slate-400 mt-0.5">按 2026 年沪杭政策估算 · 数据会自动保存在本地</p>
+            <p className="text-xs text-slate-400 mt-0.5">按 2026 年沪杭政策估算 · 数据自动保存在本地</p>
           </div>
         </header>
         <div className="grid items-start gap-6 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_340px]">
@@ -80,7 +103,16 @@ export default function App() {
               <MonthlyChart result={result} />
             </Suspense>
           </div>
-          <PlanComparePanel plans={plans} canSave={plans.length < MAX_PLANS} onSave={handleSavePlan} onLoad={handleLoadPlan} onDelete={handleDeletePlan} />
+          <PlanComparePanel
+            plans={plans}
+            canSave={plans.length < MAX_PLANS}
+            editingId={editingId}
+            onSave={handleSavePlan}
+            onEdit={handleEditPlan}
+            onCancelEdit={handleCancelEdit}
+            onLoad={handleLoadPlan}
+            onDelete={handleDeletePlan}
+          />
         </div>
       </main>
       <Footer />
