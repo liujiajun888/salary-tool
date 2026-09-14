@@ -90,7 +90,7 @@ export default function App() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-dark text-base font-bold text-white shadow-[0_2px_12px_rgba(6,182,212,0.3)]">¥</div>
           <div>
             <h1 className="text-xl font-bold text-slate-800 tracking-tight">薪资计算器</h1>
-            <p className="text-xs text-slate-400 mt-0.5">按 2026 年沪杭政策估算 · 数据自动保存在本地</p>
+            <p className="text-xs text-slate-400 mt-0.5">按 2026 年沪杭政策估算 · 13/14 薪并入 12 月工资，年终奖两种计税方式对比</p>
           </div>
         </header>
         <div className="grid items-start gap-6 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_340px]">

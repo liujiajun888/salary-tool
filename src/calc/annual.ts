@@ -9,7 +9,7 @@ import { round2 } from './format';
 export interface SalaryInput {
   cityId: CityId;
   monthlySalary: number;
-  salaryMonths: number; // 12-16，超出 12 的部分为奖金
+  salaryMonths: number; // 12-16，超出 12 的部分（13/14 薪等）并入 12 月工资计税
   bonus: number;
   hfRatio: number;
   hfSupplementRatio: number;
@@ -24,6 +24,7 @@ export interface MonthRow {
   personalTotal: number;
   tax: number;
   net: number;
+  note?: string; // 如“含 13 薪”
 }
 
 export interface BonusRow {
@@ -34,7 +35,7 @@ export interface BonusRow {
 }
 
 export interface SchemeResult {
-  id: 'A' | 'B' | 'C';
+  id: 'A' | 'B';
   label: string;
   totalTax: number;
   totalNet: number;
@@ -93,16 +94,19 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     p.pension, p.medical, p.unemployment, p.hfBasic, p.hfSupplement,
   ]);
 
-  const months: MonthInput[] = Array.from({ length: 12 }, () => ({
-    gross: monthlySalary,
+  // 13/14 薪等额外月薪并入 12 月工资，一起走累计预扣
+  const extraCount = Math.max(0, input.salaryMonths - 12);
+  const extrasTotal = round2(extraCount * monthlySalary);
+  const extraNote =
+    extraCount > 0
+      ? `含 ${Array.from({ length: extraCount }, (_, i) => 13 + i).join('、')} 薪`
+      : undefined;
+
+  const months: MonthInput[] = Array.from({ length: 12 }, (_, i) => ({
+    gross: i === 11 ? round2(monthlySalary + extrasTotal) : monthlySalary,
     personalDeduction: personalMonthly,
     specialDeduction: input.specialDeductionMonthly,
   }));
-
-  const extraSalaries = Array.from(
-    { length: Math.max(0, input.salaryMonths - 12) },
-    () => monthlySalary,
-  );
 
   const bonusRow = (label: string, gross: number): BonusRow => {
     const gross2 = round2(gross);
@@ -110,28 +114,18 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     return { label, gross: gross2, tax, net: round2(gross2 - tax) };
   };
 
-  // 方案 A：各笔奖金分别单独计税（常用简化口径）
+  // 方案 A：年终奖单独计税（额外月薪已并入 12 月工资）
   const taxesA = withhold(months);
-  const bonusesA: BonusRow[] = [
-    ...extraSalaries.map((gross, i) => bonusRow(`${13 + i} 薪`, gross)),
-    ...(bonus > 0 ? [bonusRow('年终奖', bonus)] : []),
-  ];
+  const bonusesA: BonusRow[] = bonus > 0 ? [bonusRow('年终奖', bonus)] : [];
 
-  // 方案 B：年终奖并入 12 月综合所得，其余奖金仍单独计税
+  // 方案 B：年终奖并入 12 月综合所得
   const monthsB = months.map((m, i) =>
     i === 11 ? { ...m, gross: round2(m.gross + bonus) } : m,
   );
   const taxesB = withhold(monthsB);
-  const bonusesB: BonusRow[] = extraSalaries.map((gross, i) => bonusRow(`${13 + i} 薪`, gross));
+  const bonusesB: BonusRow[] = [];
 
-  // 方案 C：全部奖金合并为一笔单独计税
-  const pool = round2(extraSalaries.reduce((a, b) => a + b, 0) + bonus);
-  // C 的月薪流水与 A 完全相同，直接复用；奖金税表为凸函数（斜率非降、f(0)=0），
-  // 超可加性保证 C 不可能严格优于 A 的拆分，仅作政策合规对比展示
-  const taxesC = taxesA;
-  const bonusesC: BonusRow[] = pool > 0 ? [bonusRow('奖金合并', pool)] : [];
-
-  const grossYear = round2(monthlySalary * 12 + pool);
+  const grossYear = round2(monthlySalary * 12 + extrasTotal + bonus);
 
   const buildScheme = (
     id: SchemeResult['id'],
@@ -149,9 +143,8 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   };
 
   const schemes: SchemeResult[] = [
-    buildScheme('A', '各笔奖金分别单独计税', taxesA, bonusesA),
+    buildScheme('A', '年终奖单独计税', taxesA, bonusesA),
     buildScheme('B', '年终奖并入综合所得', taxesB, bonusesB),
-    buildScheme('C', '全部奖金合并一笔单独计税', taxesC, bonusesC),
   ];
   const recommendedId = schemes.reduce(
     (best, s) => (s.totalTax < best.totalTax ? s : best),
@@ -159,11 +152,9 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   ).id;
   const rec = schemes.find((s) => s.id === recommendedId)!;
 
-  const useB = recommendedId === 'B';
-  const recTaxes = useB ? taxesB : taxesA;
-  const recBonuses =
-    recommendedId === 'A' ? bonusesA : useB ? bonusesB : bonusesC;
-  const flowMonths = useB ? monthsB : months;
+  const recTaxes = recommendedId === 'B' ? taxesB : taxesA;
+  const recBonuses = recommendedId === 'B' ? bonusesB : bonusesA;
+  const flowMonths = recommendedId === 'B' ? monthsB : months;
 
   const monthlyRows: MonthRow[] = flowMonths.map((m, i) => ({
     month: i + 1,
@@ -171,6 +162,7 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     personalTotal: personalMonthly,
     tax: recTaxes[i],
     net: round2(m.gross - personalMonthly - recTaxes[i]),
+    note: i === 11 ? extraNote : undefined,
   }));
 
   const personalSocialYear = round2((p.pension + p.medical + p.unemployment) * 12);

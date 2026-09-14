@@ -18,30 +18,35 @@ describe('computeAnnual 金样本例：上海 30000 / 13 薪 / 年终奖 100000'
 
   it('推荐方案 A', () => expect(r.recommendedId).toBe('A'));
 
-  it('三方案年度总个税', () => {
-    expect(r.schemes.find((s) => s.id === 'A')!.totalTax).toBeCloseTo(41170);
-    expect(r.schemes.find((s) => s.id === 'B')!.totalTax).toBeCloseTo(53230);
-    expect(r.schemes.find((s) => s.id === 'C')!.totalTax).toBeCloseTo(43270);
+  it('两方案年度总个税', () => {
+    expect(r.schemes).toHaveLength(2);
+    expect(r.schemes.find((s) => s.id === 'A')!.totalTax).toBeCloseTo(46270);
+    expect(r.schemes.find((s) => s.id === 'B')!.totalTax).toBeCloseTo(59830);
   });
 
-  it('年度总到手', () => expect(r.totals.netYear).toBeCloseTo(385830));
+  it('年度总到手', () => expect(r.totals.netYear).toBeCloseTo(380730));
 
-  it('逐月税额', () => {
+  it('13 薪并入 12 月工资（税前翻倍，带备注）', () => {
+    expect(r.monthlyRows[11].gross).toBeCloseTo(60000);
+    expect(r.monthlyRows[11].note).toBe('含 13 薪');
+    expect(r.monthlyRows[0].note).toBeUndefined();
+  });
+
+  it('逐月税额（12 月含 13 薪后跳档）', () => {
     expect(r.monthlyRows.map((m) => m.tax)).toEqual([
-      592.5, 837.5, 1975, 1975, 1975, 1975, 1975, 3375, 3950, 3950, 3950, 3950,
+      592.5, 837.5, 1975, 1975, 1975, 1975, 1975, 3375, 3950, 3950, 3950, 9950,
     ]);
   });
 
   it('逐月税后', () => {
     expect(r.monthlyRows[0].net).toBeCloseTo(24157.5);
     expect(r.monthlyRows[7].net).toBeCloseTo(21375);
-    expect(r.monthlyRows[11].net).toBeCloseTo(20800);
+    expect(r.monthlyRows[11].net).toBeCloseTo(44800);
   });
 
-  it('奖金行（13 薪 900、年终奖 9790）', () => {
-    expect(r.bonuses.map((b) => b.label)).toEqual(['13 薪', '年终奖']);
-    expect(r.bonuses[0].tax).toBeCloseTo(900);
-    expect(r.bonuses[1].tax).toBeCloseTo(9790);
+  it('奖金行仅年终奖（13 薪不再单独计税）', () => {
+    expect(r.bonuses.map((b) => b.label)).toEqual(['年终奖']);
+    expect(r.bonuses[0].tax).toBeCloseTo(9790);
   });
 
   it('社保公积金年度合计', () => {
@@ -110,7 +115,7 @@ describe('汇总与流水勾稽（spec §7.3）', () => {
     expect(r.hfBase).toBe(42151);
   });
 
-  it('B 推荐且 13 薪行同时展示', () => {
+  it('B 推荐时 13 薪并入 12 月工资', () => {
     const r = computeAnnual({
       ...GOLDEN,
       monthlySalary: 5000,
@@ -118,8 +123,9 @@ describe('汇总与流水勾稽（spec §7.3）', () => {
       salaryMonths: 13,
     });
     expect(r.recommendedId).toBe('B');
-    expect(r.bonuses.map((b) => b.label)).toEqual(['13 薪']);
-    expect(r.monthlyRows[11].gross).toBe(5000 + 36001);
+    expect(r.monthlyRows[11].gross).toBe(5000 + 5000 + 36001);
+    expect(r.monthlyRows[11].note).toBe('含 13 薪');
+    expect(r.bonuses).toHaveLength(0);
   });
 
   it('3 位小数输入在入口取整后仍勾稽', () => {

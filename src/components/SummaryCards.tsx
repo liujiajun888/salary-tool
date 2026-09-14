@@ -35,7 +35,7 @@ export default function SummaryCards({ result }: { result: AnnualResult }) {
             );
           })}
         </div>
-        <p className="mt-3 text-[11px] text-slate-400">方案 A 为简化口径（严格政策下一年仅一笔奖金可单独计税）</p>
+        <p className="mt-3 text-[11px] text-slate-400">13/14 薪已并入 12 月工资一起计税；年终奖单独计税每年仅可享受一次</p>
       </div>
     </section>
   );

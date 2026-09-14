@@ -25,7 +25,9 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
           <tbody>
             {monthlyRows.map((r) => (
               <tr key={r.month} className="border-b border-gray-50 transition-colors hover:bg-gray-50/40">
-                <td className="py-2.5 text-left text-slate-400">{r.month} 月</td>
+                <td className="py-2.5 text-left text-slate-400">
+                  {r.month} 月{r.note && <span className="ml-1 text-[10px] text-accent-dark">（{r.note}）</span>}
+                </td>
                 <td className="text-slate-600">{formatMoney(r.gross)}</td>
                 <td className="text-info">{formatMoney(r.personalTotal)}</td>
                 <td className="text-negative">{formatMoney(r.tax)}</td>
