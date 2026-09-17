@@ -36,7 +36,12 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
             ))}
             {bonuses.map((b) => (
               <tr key={b.label} className="border-b border-gray-50 bg-accent/[0.02]">
-                <td className="py-2.5 text-left text-accent-dark font-medium">{b.label}</td>
+                <td className="py-2.5 text-left text-accent-dark font-medium">
+                  {b.label}
+                  <span className="ml-1.5 rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-normal text-accent-dark whitespace-nowrap">
+                    {b.taxMethod === 'annual' ? '单独计税·年度表' : '单独计税·月度表'}
+                  </span>
+                </td>
                 <td className="text-slate-600">{formatMoney(b.gross)}</td>
                 <td className="text-slate-300">—</td>
                 <td className="text-negative">{formatMoney(b.tax)}</td>

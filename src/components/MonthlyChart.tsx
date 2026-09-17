@@ -6,7 +6,10 @@ export default function MonthlyChart({ result }: { result: AnnualResult }) {
   const data = result.monthlyRows.map((r) => ({ name: `${r.month}月`, 税后: r.net, 个税: r.tax, 社保公积金: r.personalTotal }));
   const bonusNet = round2(result.bonuses.reduce((a, b) => a + b.net, 0));
   const bonusTax = round2(result.bonuses.reduce((a, b) => a + b.tax, 0));
-  if (bonusNet > 0) data.push({ name: '奖金', 税后: bonusNet, 个税: bonusTax, 社保公积金: 0 });
+  if (bonusNet > 0) {
+    const hasStock = result.bonuses.some((b) => b.taxMethod === 'annual');
+    data.push({ name: hasStock ? '奖金/股票' : '奖金', 税后: bonusNet, 个税: bonusTax, 社保公积金: 0 });
+  }
   return (
     <section className="rounded-2xl border border-gray-100/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_6px_rgba(0,0,0,0.02)] animate-[fade-in-up_0.4s_ease-out]">
       <h2 className="mb-4 text-sm font-semibold text-slate-700 tracking-wide">月度收入构成</h2>

@@ -35,7 +35,12 @@ export default function SummaryCards({ result }: { result: AnnualResult }) {
             );
           })}
         </div>
-        <p className="mt-3 text-[11px] text-slate-400">13/14 薪已并入 12 月工资一起计税；年终奖单独计税每年仅可享受一次</p>
+        <p className="mt-3 text-[11px] text-slate-400">
+          13/14 薪已并入 12 月工资一起计税；年终奖单独计税每年仅可享受一次
+          {result.bonuses.some((b) => b.taxMethod === 'annual') && (
+            <>；股票/股权激励不并入综合所得，两种方案下均单独计税（年度税率表）</>
+          )}
+        </p>
       </div>
     </section>
   );

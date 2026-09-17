@@ -122,6 +122,12 @@ describe('computeAnnual 股票/股权激励', () => {
     const row = r.bonuses.find((b) => b.label === '股票/股权激励')!;
     expect(row.gross).toBeCloseTo(100000);
     expect(row.tax).toBeCloseTo(7480);
+    expect(row.taxMethod).toBe('annual');
+  });
+
+  it('年终奖行标记月度税率表计税方式', () => {
+    const row = r.bonuses.find((b) => b.label === '年终奖')!;
+    expect(row.taxMethod).toBe('monthly');
   });
 
   it('两个方案都叠加股票税与年终奖行', () => {
@@ -172,7 +178,7 @@ describe('汇总与流水勾稽（spec §7.3）', () => {
     expect(r.hfBase).toBe(42151);
   });
 
-  it('B 推荐时 13 薪并入 12 月工资', () => {
+  it('B 推荐时 13 薪并入 12 月工资，备注含年终奖', () => {
     const r = computeAnnual({
       ...GOLDEN,
       monthlySalary: 5000,
@@ -181,8 +187,14 @@ describe('汇总与流水勾稽（spec §7.3）', () => {
     });
     expect(r.recommendedId).toBe('B');
     expect(r.monthlyRows[11].gross).toBe(5000 + 5000 + 36001);
-    expect(r.monthlyRows[11].note).toBe('含 13 薪');
+    expect(r.monthlyRows[11].note).toBe('含 13 薪、年终奖');
     expect(r.bonuses).toHaveLength(0);
+  });
+
+  it('方案 A 推荐时备注不含年终奖（年终奖单独成行）', () => {
+    const r = computeAnnual(GOLDEN);
+    expect(r.recommendedId).toBe('A');
+    expect(r.monthlyRows[11].note).toBe('含 13 薪');
   });
 
   it('3 位小数输入在入口取整后仍勾稽', () => {

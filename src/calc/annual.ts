@@ -34,6 +34,7 @@ export interface BonusRow {
   gross: number;
   tax: number;
   net: number;
+  taxMethod: 'monthly' | 'annual'; // monthly=月度税率表单独计税，annual=年度税率表单独计税
 }
 
 export interface SchemeResult {
@@ -101,13 +102,15 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   const extrasTotal = round2(extraCount * monthlySalary);
   const signingBonus = round2(Math.max(0, input.signingBonus));
   const stockIncome = round2(Math.max(0, input.stockIncome));
-  const noteParts: string[] = [];
+  const noteBaseParts: string[] = [];
   if (extraCount > 0) {
-    noteParts.push(`${Array.from({ length: extraCount }, (_, i) => 13 + i).join('、')} 薪`);
+    noteBaseParts.push(`${Array.from({ length: extraCount }, (_, i) => 13 + i).join('、')} 薪`);
   }
-  if (signingBonus > 0) noteParts.push('签字费');
-  const extraNote =
-    noteParts.length > 0 ? `含${extraCount > 0 ? ' ' : ''}${noteParts.join('、')}` : undefined;
+  if (signingBonus > 0) noteBaseParts.push('签字费');
+  const fmtNote = (parts: string[]) =>
+    parts.length > 0 ? `含${extraCount > 0 ? ' ' : ''}${parts.join('、')}` : undefined;
+  const noteA = fmtNote(noteBaseParts);
+  const noteB = fmtNote([...noteBaseParts, ...(bonus > 0 ? ['年终奖'] : [])]);
 
   const months: MonthInput[] = Array.from({ length: 12 }, (_, i) => ({
     gross: i === 11 ? round2(monthlySalary + extrasTotal + signingBonus) : monthlySalary,
@@ -118,14 +121,20 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   const bonusRow = (label: string, gross: number): BonusRow => {
     const gross2 = round2(gross);
     const tax = round2(bonusTax(gross2));
-    return { label, gross: gross2, tax, net: round2(gross2 - tax) };
+    return { label, gross: gross2, tax, net: round2(gross2 - tax), taxMethod: 'monthly' };
   };
 
   // 股票/股权激励：不并入综合所得，全额单独计税；与年终奖方案无关，两个方案都叠加
   const stockRows: BonusRow[] = [];
   if (stockIncome > 0) {
     const tax = round2(stockTax(stockIncome));
-    stockRows.push({ label: '股票/股权激励', gross: stockIncome, tax, net: round2(stockIncome - tax) });
+    stockRows.push({
+      label: '股票/股权激励',
+      gross: stockIncome,
+      tax,
+      net: round2(stockIncome - tax),
+      taxMethod: 'annual',
+    });
   }
 
   // 方案 A：年终奖单独计税（额外月薪已并入 12 月工资）
@@ -179,7 +188,7 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     personalTotal: personalMonthly,
     tax: recTaxes[i],
     net: round2(m.gross - personalMonthly - recTaxes[i]),
-    note: i === 11 ? extraNote : undefined,
+    note: i === 11 ? (recommendedId === 'B' ? noteB : noteA) : undefined,
   }));
 
   const personalSocialYear = round2((p.pension + p.medical + p.unemployment) * 12);
