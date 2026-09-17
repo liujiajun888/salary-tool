@@ -23,6 +23,7 @@ function load(k: string) {
 
 const defaultForm: FormState = {
   cityId: 'shanghai', monthlySalary: 20000, salaryMonths: 12, bonus: 0,
+  signingBonus: 0,
   hfRatio: CITIES.shanghai.housingFund.defaultRatio, hfSupplementRatio: 0,
   specialDeductionMonthly: 0, customSocialBase: null, customHfBase: null,
   companyName: '',

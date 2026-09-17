@@ -6,6 +6,7 @@ const GOLDEN = {
   monthlySalary: 30000,
   salaryMonths: 13,
   bonus: 100000,
+  signingBonus: 0,
   hfRatio: 0.07,
   hfSupplementRatio: 0,
   specialDeductionMonthly: 0,
@@ -82,6 +83,35 @@ describe('computeAnnual 无奖金', () => {
     expect(new Set(r.schemes.map((s) => s.totalTax)).size).toBe(1);
   });
   it('无奖金行', () => expect(r.bonuses).toHaveLength(0));
+});
+
+describe('computeAnnual 签字费并入 12 月', () => {
+  it('12 薪 + 签字费 50000：并入 12 月工资计税', () => {
+    const r = computeAnnual({ ...GOLDEN, salaryMonths: 12, bonus: 0, signingBonus: 50000 });
+    expect(r.monthlyRows[11].gross).toBeCloseTo(80000);
+    expect(r.monthlyRows[11].note).toBe('含签字费');
+    expect(r.monthlyRows[0].note).toBeUndefined();
+    expect(r.monthlyRows[11].tax).toBeCloseTo(13950);
+    expect(r.totals.taxYear).toBeCloseTo(40480);
+    expect(r.totals.netYear).toBeCloseTo(306520);
+  });
+
+  it('金样 + 签字费 50000：与 13 薪同时并入，备注合并显示', () => {
+    const r = computeAnnual({ ...GOLDEN, signingBonus: 50000 });
+    expect(r.monthlyRows[11].gross).toBeCloseTo(110000);
+    expect(r.monthlyRows[11].note).toBe('含 13 薪、签字费');
+    expect(r.monthlyRows[11].tax).toBeCloseTo(20800);
+    expect(r.schemes.find((s) => s.id === 'A')!.totalTax).toBeCloseTo(57120);
+    expect(r.schemes.find((s) => s.id === 'B')!.totalTax).toBeCloseTo(72330);
+    expect(r.recommendedId).toBe('A');
+    expect(r.totals.netYear).toBeCloseTo(419880);
+  });
+
+  it('签字费为 0 时行为不变（无备注）', () => {
+    const r = computeAnnual({ ...GOLDEN, salaryMonths: 12, bonus: 0 });
+    expect(r.monthlyRows[11].note).toBeUndefined();
+    expect(r.monthlyRows[11].gross).toBeCloseTo(30000);
+  });
 });
 
 describe('汇总与流水勾稽（spec §7.3）', () => {

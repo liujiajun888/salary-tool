@@ -11,6 +11,7 @@ export interface SalaryInput {
   monthlySalary: number;
   salaryMonths: number; // 12-16，超出 12 的部分（13/14 薪等）并入 12 月工资计税
   bonus: number;
+  signingBonus: number; // 签字费，默认 0，有值时并入 12 月工资计税
   hfRatio: number;
   hfSupplementRatio: number;
   specialDeductionMonthly: number;
@@ -94,16 +95,20 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     p.pension, p.medical, p.unemployment, p.hfBasic, p.hfSupplement,
   ]);
 
-  // 13/14 薪等额外月薪并入 12 月工资，一起走累计预扣
+  // 13/14 薪等额外月薪与签字费并入 12 月工资，一起走累计预扣
   const extraCount = Math.max(0, input.salaryMonths - 12);
   const extrasTotal = round2(extraCount * monthlySalary);
+  const signingBonus = round2(Math.max(0, input.signingBonus));
+  const noteParts: string[] = [];
+  if (extraCount > 0) {
+    noteParts.push(`${Array.from({ length: extraCount }, (_, i) => 13 + i).join('、')} 薪`);
+  }
+  if (signingBonus > 0) noteParts.push('签字费');
   const extraNote =
-    extraCount > 0
-      ? `含 ${Array.from({ length: extraCount }, (_, i) => 13 + i).join('、')} 薪`
-      : undefined;
+    noteParts.length > 0 ? `含${extraCount > 0 ? ' ' : ''}${noteParts.join('、')}` : undefined;
 
   const months: MonthInput[] = Array.from({ length: 12 }, (_, i) => ({
-    gross: i === 11 ? round2(monthlySalary + extrasTotal) : monthlySalary,
+    gross: i === 11 ? round2(monthlySalary + extrasTotal + signingBonus) : monthlySalary,
     personalDeduction: personalMonthly,
     specialDeduction: input.specialDeductionMonthly,
   }));
@@ -125,7 +130,7 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   const taxesB = withhold(monthsB);
   const bonusesB: BonusRow[] = [];
 
-  const grossYear = round2(monthlySalary * 12 + extrasTotal + bonus);
+  const grossYear = round2(monthlySalary * 12 + extrasTotal + signingBonus + bonus);
 
   const buildScheme = (
     id: SchemeResult['id'],

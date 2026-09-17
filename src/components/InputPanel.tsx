@@ -66,6 +66,11 @@ export default function InputPanel({ form, policy, socialBase, hfBase, patch }: 
           <label className={labelCls} htmlFor="bonus">年终奖（元）</label>
           <NumberField id="bonus" className={inputCls} value={form.bonus} onChange={(v) => patch({ bonus: v ?? 0 })} />
         </div>
+        <div>
+          <label className={labelCls} htmlFor="signing-bonus">签字费（元）</label>
+          <NumberField id="signing-bonus" className={inputCls} value={form.signingBonus} onChange={(v) => patch({ signingBonus: v ?? 0 })} />
+          <p className="mt-1 text-xs text-slate-400">默认 0；有值时并入 12 月工资一起发放计税</p>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls} htmlFor="hf-ratio">公积金比例</label>
