@@ -71,6 +71,11 @@ export default function InputPanel({ form, policy, socialBase, hfBase, patch }: 
           <NumberField id="signing-bonus" className={inputCls} value={form.signingBonus} onChange={(v) => patch({ signingBonus: v ?? 0 })} />
           <p className="mt-1 text-xs text-slate-400">默认 0；有值时并入 12 月工资一起发放计税</p>
         </div>
+        <div>
+          <label className={labelCls} htmlFor="stock-income">股票/股权激励（元）</label>
+          <NumberField id="stock-income" className={inputCls} value={form.stockIncome} onChange={(v) => patch({ stockIncome: v ?? 0 })} />
+          <p className="mt-1 text-xs text-slate-400">默认 0；不并入综合所得，全额单独适用年度税率表计税</p>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls} htmlFor="hf-ratio">公积金比例</label>

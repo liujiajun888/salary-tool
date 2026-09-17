@@ -7,6 +7,7 @@ const GOLDEN = {
   salaryMonths: 13,
   bonus: 100000,
   signingBonus: 0,
+  stockIncome: 0,
   hfRatio: 0.07,
   hfSupplementRatio: 0,
   specialDeductionMonthly: 0,
@@ -111,6 +112,32 @@ describe('computeAnnual 签字费并入 12 月', () => {
     const r = computeAnnual({ ...GOLDEN, salaryMonths: 12, bonus: 0 });
     expect(r.monthlyRows[11].note).toBeUndefined();
     expect(r.monthlyRows[11].gross).toBeCloseTo(30000);
+  });
+});
+
+describe('computeAnnual 股票/股权激励', () => {
+  const r = computeAnnual({ ...GOLDEN, stockIncome: 100000 });
+
+  it('股票行单独计税（年度税率表，100000 → 7480）', () => {
+    const row = r.bonuses.find((b) => b.label === '股票/股权激励')!;
+    expect(row.gross).toBeCloseTo(100000);
+    expect(row.tax).toBeCloseTo(7480);
+  });
+
+  it('两个方案都叠加股票税与年终奖行', () => {
+    expect(r.bonuses.map((b) => b.label)).toEqual(['年终奖', '股票/股权激励']);
+    expect(r.schemes.find((s) => s.id === 'A')!.totalTax).toBeCloseTo(53750);
+    expect(r.schemes.find((s) => s.id === 'B')!.totalTax).toBeCloseTo(67310);
+  });
+
+  it('年度总包与到手包含股票', () => {
+    expect(r.totals.grossYear).toBeCloseTo(590000);
+    expect(r.totals.netYear).toBeCloseTo(473250);
+  });
+
+  it('股票为 0 时无股票行', () => {
+    const r0 = computeAnnual({ ...GOLDEN, stockIncome: 0 });
+    expect(r0.bonuses.some((b) => b.label === '股票/股权激励')).toBe(false);
   });
 });
 

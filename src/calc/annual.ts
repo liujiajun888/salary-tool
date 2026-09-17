@@ -2,7 +2,7 @@ import { CITIES } from '../policy';
 import type { CityId } from '../policy/types';
 import { monthlyInsurance, resolveBase } from './social';
 import type { InsuranceBreakdown } from './social';
-import { bonusTax, withhold } from './tax';
+import { bonusTax, stockTax, withhold } from './tax';
 import type { MonthInput } from './tax';
 import { round2 } from './format';
 
@@ -12,6 +12,7 @@ export interface SalaryInput {
   salaryMonths: number; // 12-16，超出 12 的部分（13/14 薪等）并入 12 月工资计税
   bonus: number;
   signingBonus: number; // 签字费，默认 0，有值时并入 12 月工资计税
+  stockIncome: number; // 股票/股权激励，默认 0，全额单独适用年度税率表（不并入综合所得）
   hfRatio: number;
   hfSupplementRatio: number;
   specialDeductionMonthly: number;
@@ -99,6 +100,7 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   const extraCount = Math.max(0, input.salaryMonths - 12);
   const extrasTotal = round2(extraCount * monthlySalary);
   const signingBonus = round2(Math.max(0, input.signingBonus));
+  const stockIncome = round2(Math.max(0, input.stockIncome));
   const noteParts: string[] = [];
   if (extraCount > 0) {
     noteParts.push(`${Array.from({ length: extraCount }, (_, i) => 13 + i).join('、')} 薪`);
@@ -119,18 +121,28 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     return { label, gross: gross2, tax, net: round2(gross2 - tax) };
   };
 
+  // 股票/股权激励：不并入综合所得，全额单独计税；与年终奖方案无关，两个方案都叠加
+  const stockRows: BonusRow[] = [];
+  if (stockIncome > 0) {
+    const tax = round2(stockTax(stockIncome));
+    stockRows.push({ label: '股票/股权激励', gross: stockIncome, tax, net: round2(stockIncome - tax) });
+  }
+
   // 方案 A：年终奖单独计税（额外月薪已并入 12 月工资）
   const taxesA = withhold(months);
-  const bonusesA: BonusRow[] = bonus > 0 ? [bonusRow('年终奖', bonus)] : [];
+  const bonusesA: BonusRow[] = [
+    ...(bonus > 0 ? [bonusRow('年终奖', bonus)] : []),
+    ...stockRows,
+  ];
 
   // 方案 B：年终奖并入 12 月综合所得
   const monthsB = months.map((m, i) =>
     i === 11 ? { ...m, gross: round2(m.gross + bonus) } : m,
   );
   const taxesB = withhold(monthsB);
-  const bonusesB: BonusRow[] = [];
+  const bonusesB: BonusRow[] = [...stockRows];
 
-  const grossYear = round2(monthlySalary * 12 + extrasTotal + signingBonus + bonus);
+  const grossYear = round2(monthlySalary * 12 + extrasTotal + signingBonus + bonus + stockIncome);
 
   const buildScheme = (
     id: SchemeResult['id'],

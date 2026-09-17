@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ANNUAL_BRACKETS, MONTHLY_BRACKETS, cumulativeTax, bonusTax, withhold } from '../src/calc/tax';
+import { ANNUAL_BRACKETS, MONTHLY_BRACKETS, cumulativeTax, bonusTax, stockTax, withhold } from '../src/calc/tax';
 
 describe('cumulativeTax 综合所得年度税率表', () => {
   it('3% 档', () => expect(cumulativeTax(19750)).toBeCloseTo(592.5));
@@ -18,6 +18,16 @@ describe('bonusTax 全年一次性奖金（月度税率表）', () => {
   it('36001 跳 10% 档', () => expect(bonusTax(36001)).toBeCloseTo(3390.1));
   it('100000', () => expect(bonusTax(100000)).toBeCloseTo(9790));
   it('0 为 0', () => expect(bonusTax(0)).toBe(0));
+});
+
+describe('stockTax 股票/股权激励（全额单独适用年度税率表）', () => {
+  it('3% 档', () => expect(stockTax(36000)).toBeCloseTo(1080));
+  it('10% 档（不除以 12）', () => expect(stockTax(100000)).toBeCloseTo(7480));
+  it('20% 档', () => expect(stockTax(200000)).toBeCloseTo(23080));
+  it('0 与负数为 0', () => {
+    expect(stockTax(0)).toBe(0);
+    expect(stockTax(-100)).toBe(0);
+  });
 });
 
 describe('withhold 累计预扣法', () => {

@@ -49,6 +49,13 @@ export function bonusTax(bonus: number): number {
   return taxByBrackets(bonus, bonus / 12, MONTHLY_BRACKETS);
 }
 
+// 股票/股权激励：不并入综合所得，全额单独适用年度税率表，
+// 应纳税额 = 收入 × 税率 − 速算扣除数（财税〔2018〕164 号，公告 2023 年第 25 号延续至 2027-12-31）
+export function stockTax(stock: number): number {
+  if (stock <= 0) return 0;
+  return taxByBrackets(stock, stock, ANNUAL_BRACKETS);
+}
+
 export interface MonthInput {
   gross: number;
   personalDeduction: number; // 当月个人三险一金 + 公积金

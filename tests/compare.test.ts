@@ -9,6 +9,7 @@ const baseInput: SalaryInput = {
   salaryMonths: 12,
   bonus: 0,
   signingBonus: 0,
+  stockIncome: 0,
   hfRatio: 0.07,
   hfSupplementRatio: 0,
   specialDeductionMonthly: 0,
