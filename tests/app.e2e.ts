@@ -1,0 +1,322 @@
+import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { DEFAULT_FORM } from '../src/storage';
+
+async function view(page: Page, name: '薪资参数' | '测算结果' | '方案对比') {
+  const navigation = page.getByRole('navigation', { name: '测算分区' });
+  if (await navigation.isVisible()) await navigation.getByRole('button', { name, exact: name !== '方案对比' }).click();
+}
+
+async function noOverflow(page: Page) {
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), {
+    message: '页面在响应式布局稳定后不应横向溢出',
+  }).toBeLessThanOrEqual(0);
+}
+
+async function nameAndSave(page: Page, name: string) {
+  await view(page, '薪资参数');
+  await page.locator('#company-name').fill(name);
+  await page.getByRole('button', { name: '保存为对比方案', exact: true }).click();
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+}
+
+test('default cash, no-bonus state and responsive layout', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text()); });
+  await page.goto('/');
+  await noOverflow(page);
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toHaveText('¥186,720.00');
+  await expect(page.getByTestId('annual-stock')).toHaveText('¥0.00');
+  await expect(page.getByText('推荐', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/未填写年终奖，无需选择/)).toBeVisible();
+  await expect(page.locator('.chart-frame svg').first()).toBeVisible();
+  await page.getByText('展开 12 个月工资明细', { exact: true }).click();
+  await page.getByText('展开个人与单位缴费明细', { exact: true }).click();
+  await noOverflow(page);
+  expect(errors).toEqual([]);
+});
+
+test('cash and equity are isolated, signing bonus is removed by recalculation', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#monthly-salary').fill('30000');
+  await page.locator('#salary-months').selectOption('13');
+  await page.locator('#bonus').fill('100000');
+  await page.getByText('签字费与股权激励（选填）', { exact: true }).click();
+  await page.locator('#signing-bonus').fill('50000');
+  await page.locator('#stock-income').fill('100000');
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toHaveText('¥419,880.00');
+  await expect(page.getByTestId('annual-stock')).toHaveText('¥92,520.00');
+  await expect(page.getByText(/不含签字费的后续年度现金/)).toContainText('380,730.00');
+  await page.getByText('为什么这个月扣了这些税？', { exact: true }).click();
+  await expect(page.locator('.formula')).toContainText('20,800.00');
+  await page.locator('#explain-month').selectOption('1');
+  await expect(page.locator('.formula')).toContainText('592.50');
+  await view(page, '薪资参数');
+  await page.locator('#stock-income').fill('0');
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toHaveText('¥419,880.00');
+  await expect(page.getByTestId('annual-stock')).toHaveText('¥0.00');
+  await noOverflow(page);
+});
+
+test('empty and zero salaries do not show negative estimates or allow save', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#monthly-salary').fill('');
+  await expect(page.getByRole('button', { name: '保存为对比方案', exact: true })).toBeDisabled();
+  await view(page, '测算结果');
+  await expect(page.getByRole('heading', { name: '先填写税前月薪' })).toBeVisible();
+  await expect(page.getByTestId('annual-cash')).not.toBeVisible();
+  await view(page, '薪资参数');
+  await page.locator('#monthly-salary').fill('20000.50');
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toBeVisible();
+});
+
+test('equal tax outcomes do not recommend a winner', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#monthly-salary').fill('8000');
+  await page.locator('#bonus').fill('1000');
+  await view(page, '测算结果');
+  await expect(page.getByText('两种方式结果相同', { exact: true })).toBeVisible();
+  await expect(page.getByText('推荐', { exact: true })).toHaveCount(0);
+});
+
+test('scheme B is recommended for the low-salary bonus case', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#monthly-salary').fill('5000');
+  await page.locator('#bonus').fill('36001');
+  await view(page, '测算结果');
+  await expect(page.locator('.scheme-best')).toContainText('年终奖并入综合所得');
+  await expect(page.locator('.scheme-best')).toContainText('668.79');
+});
+
+test('save, edit, cancel, update, load and delete preserve plan boundaries', async ({ page }) => {
+  await page.goto('/');
+  await nameAndSave(page, '当前工作');
+  await view(page, '薪资参数');
+  await page.locator('#monthly-salary').fill('30000');
+  await nameAndSave(page, '新 Offer');
+  await page.getByRole('button', { name: '编辑当前工作', exact: true }).click();
+  await expect(page.locator('#monthly-salary')).toHaveValue('20000');
+  await page.locator('#monthly-salary').fill('25000');
+  await page.getByRole('button', { name: '取消编辑', exact: true }).click();
+  await expect(page.locator('#monthly-salary')).toHaveValue('30000');
+  await view(page, '方案对比');
+  await page.getByRole('button', { name: '编辑当前工作', exact: true }).click();
+  await page.locator('#monthly-salary').fill('25000');
+  await page.getByRole('button', { name: '更新方案', exact: true }).click();
+  await expect(page.locator('.plan-card')).toHaveCount(2);
+  await expect(page.locator('.plan-card').filter({ has: page.getByRole('heading', { name: '当前工作', exact: true }) })).toContainText('月薪 25,000.00');
+  await page.getByRole('button', { name: '载入新 Offer', exact: true }).click();
+  await expect(page.locator('#monthly-salary')).toHaveValue('30000');
+  await view(page, '方案对比');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: '删除当前工作', exact: true }).click();
+  await expect(page.locator('.plan-card')).toHaveCount(1);
+  await page.reload();
+  await view(page, '方案对比');
+  await expect(page.getByRole('heading', { name: '新 Offer', exact: true })).toBeVisible();
+});
+
+test('clearing optional amounts does not collapse the focused inputs', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('签字费与股权激励（选填）', { exact: true }).click();
+  await page.locator('#signing-bonus').fill('50000');
+  await page.locator('#signing-bonus').fill('');
+  await expect(page.locator('#signing-bonus')).toBeVisible();
+  await page.locator('#signing-bonus').fill('60000');
+  await expect(page.locator('#signing-bonus')).toHaveValue('60000');
+  await page.getByText('自定义缴费基数', { exact: true }).click();
+  await page.locator('#custom-social-base').fill('10000');
+  await page.locator('#custom-social-base').fill('');
+  await expect(page.locator('#custom-social-base')).toBeVisible();
+  await page.locator('#custom-social-base').fill('12000');
+  await expect(page.locator('#custom-social-base')).toHaveValue('12000');
+});
+
+test('deleting the edited plan preserves current draft inputs', async ({ page }) => {
+  await page.goto('/');
+  await nameAndSave(page, '待删除');
+  await view(page, '薪资参数');
+  await page.locator('#monthly-salary').fill('30000');
+  await view(page, '方案对比');
+  await page.getByRole('button', { name: '编辑待删除', exact: true }).click();
+  await page.locator('#monthly-salary').fill('25000');
+  await view(page, '方案对比');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: '删除待删除', exact: true }).click();
+  await view(page, '薪资参数');
+  await expect(page.locator('#monthly-salary')).toHaveValue('25000');
+  await expect(page.getByRole('button', { name: '保存为对比方案', exact: true })).toBeEnabled();
+});
+
+test('tabs synchronize saved plans without input changes overwriting them', async ({ page, context }) => {
+  await page.goto('/');
+  const other = await context.newPage();
+  await other.goto('/');
+  await nameAndSave(page, '标签页 A');
+  await other.locator('#monthly-salary').fill('30000');
+  await nameAndSave(other, '标签页 B');
+  await expect(other.locator('.plan-card')).toHaveCount(2);
+  await view(page, '方案对比');
+  await expect(page.locator('.plan-card')).toHaveCount(2);
+  await page.reload();
+  await view(page, '方案对比');
+  await expect(page.locator('.plan-card')).toHaveCount(2);
+});
+
+test('concurrent edits retain the draft rather than overwrite another tab', async ({ page, context }) => {
+  await page.goto('/');
+  await nameAndSave(page, '共享方案');
+  const other = await context.newPage();
+  await other.goto('/');
+  await page.getByRole('button', { name: '编辑共享方案', exact: true }).click();
+  await page.locator('#monthly-salary').fill('28000');
+  await view(other, '方案对比');
+  await other.getByRole('button', { name: '编辑共享方案', exact: true }).click();
+  await other.locator('#monthly-salary').fill('29000');
+  await other.getByRole('button', { name: '更新方案', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('当前参数已保留');
+  await expect(page.locator('#monthly-salary')).toHaveValue('28000');
+  await page.getByRole('button', { name: '保存为对比方案', exact: true }).click();
+  await expect(page.locator('.plan-card')).toHaveCount(2);
+  const salaries = await page.evaluate(() => JSON.parse(localStorage.getItem('salary-tool-plans')!).map((plan: { input: { monthlySalary: number } }) => plan.input.monthlySalary));
+  expect(salaries.sort()).toEqual([28000, 29000]);
+});
+
+test('recurring comparison removes only signing bonus and baseline is selectable', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('签字费与股权激励（选填）', { exact: true }).click();
+  await page.locator('#signing-bonus').fill('50000');
+  await nameAndSave(page, '有签字费');
+  await view(page, '薪资参数');
+  await page.locator('#signing-bonus').fill('0');
+  await nameAndSave(page, '无签字费');
+  await page.locator('#baseline-plan').selectOption({ label: '无签字费' });
+  await expect(page.locator('.compare-table')).toContainText('+');
+  await page.getByRole('button', { name: '后续年度', exact: true }).click();
+  await expect(page.getByText(/各方案年度现金到手相同/)).toBeVisible();
+  await noOverflow(page);
+});
+
+test('housing fund cap separates actual contributions from tax deductions', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '杭州', exact: true }).click();
+  await page.locator('#monthly-salary').fill('10000');
+  await page.locator('#hf-supplement').selectOption('0.09');
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toHaveText('¥80,340.00');
+  await page.getByText('为什么这个月扣了这些税？', { exact: true }).click();
+  await expect(page.locator('.formula')).toContainText('43,800.00');
+  await expect(page.locator('.formula')).toContainText('1,860.00');
+  await expect(page.locator('.formula-grid')).toContainText('130,800.00');
+  await page.getByText('展开个人与单位缴费明细', { exact: true }).click();
+  await expect(page.getByText(/个人公积金可扣除/)).toContainText('1,200.00');
+  await noOverflow(page);
+});
+
+test('official source dates and unverified limits remain distinguishable', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('数据来源、核验状态与适用范围', { exact: true }).click();
+  await expect(page.locator('#policy-notes')).toContainText('2026-07-01 至 2027-06-30');
+  await expect(page.locator('#policy-notes')).toContainText('2027-12-31');
+  await expect(page.locator('#policy-notes')).toContainText('当前适用性待核验');
+  await expect(page.locator('#policy-notes a').first()).toHaveAttribute('href', /^https:\/\/shanghai\.chinatax\.gov\.cn\//);
+  await noOverflow(page);
+});
+
+test('deduction helper and city base reset are usable', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '按扣除项目辅助合计' }).click();
+  await page.locator('#deduction-0').fill('1500');
+  await page.locator('#deduction-1').fill('1000');
+  await page.getByRole('button', { name: /应用合计/ }).click();
+  await expect(page.locator('#special-deduction')).toHaveValue('2500');
+  await page.getByText('自定义缴费基数', { exact: true }).click();
+  await page.locator('#custom-social-base').fill('1');
+  await expect(page.getByText(/实际采用：社保/)).toContainText('7,546.00');
+  await page.getByRole('button', { name: '杭州', exact: true }).click();
+  await expect(page.locator('#hf-ratio')).toHaveValue('0.12');
+  await expect(page.locator('#custom-social-base')).toHaveValue('');
+  await expect(page.locator('#hf-supplement')).toHaveValue('0');
+  await noOverflow(page);
+});
+
+test('export and import roundtrip, malformed files leave saved plans untouched', async ({ page }) => {
+  await page.goto('/');
+  await nameAndSave(page, '备份方案');
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出备份', exact: true }).click();
+  const download = await downloadEvent;
+  const path = await download.path();
+  await page.locator('input[type=file]').setInputFiles(path!);
+  await expect(page.locator('.plan-card')).toHaveCount(2);
+  await page.locator('input[type=file]').setInputFiles({ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{broken') });
+  await expect(page.getByRole('status')).toContainText('不是有效的 JSON');
+  await expect(page.locator('.plan-card')).toHaveCount(2);
+});
+
+test('legacy snapshot is migrated instead of rendering NaN', async ({ page }) => {
+  const input: Record<string, unknown> = { ...DEFAULT_FORM };
+  delete input.signingBonus; delete input.stockIncome; delete input.companyName;
+  await page.addInitScript((legacy) => localStorage.setItem('salary-tool-plans', JSON.stringify([legacy])), {
+    id: 'old-plan', name: '旧方案', companyName: '旧方案', cityName: '上海', summary: '旧摘要', netYear: 1, hfTotalYear: 1, taxYear: 1, input,
+  });
+  await page.goto('/');
+  await view(page, '方案对比');
+  await expect(page.locator('.plan-card')).toContainText('186,720.00');
+  await expect(page.locator('body')).not.toContainText('NaN');
+  await page.getByRole('button', { name: '载入旧方案', exact: true }).click();
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toHaveText('¥186,720.00');
+});
+
+test('damaged local storage and unknown cities recover safely', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('salary-tool-form', JSON.stringify({ cityId: '__proto__', monthlySalary: -100 }));
+    localStorage.setItem('salary-tool-plans', '{');
+  });
+  await page.goto('/');
+  await expect(page.getByRole('status')).toContainText('部分本地数据无法读取');
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toHaveText('¥186,720.00');
+});
+
+test('layout remains contained across phone tablet and desktop breakpoints', async ({ page }) => {
+  await page.goto('/');
+  for (const width of [320, 768, 980, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await view(page, '薪资参数');
+    await noOverflow(page);
+    await view(page, '测算结果');
+    await expect(page.getByTestId('annual-cash')).toBeVisible();
+    await noOverflow(page);
+  }
+});
+
+test('unavailable browser storage is reported and export still works', async ({ page }) => {
+  await page.addInitScript(() => {
+    Storage.prototype.setItem = () => { throw new DOMException('Storage disabled', 'QuotaExceededError'); };
+  });
+  await page.goto('/');
+  await expect(page.getByRole('alert')).toContainText('浏览器存储不可用');
+  await nameAndSave(page, '临时方案');
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出备份', exact: true }).click();
+  expect((await downloadEvent).suggestedFilename()).toMatch(/^salary-plans-.*\.json$/);
+});
+
+test('long names, large numbers and maximum plan count stay contained', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#monthly-salary').fill('1000000000');
+  for (let index = 0; index < 5; index++) await nameAndSave(page, `${'长名称'.repeat(20)}${index}`);
+  await expect(page.locator('.plan-card')).toHaveCount(5);
+  await expect(page.getByRole('button', { name: '保存当前参数', exact: true })).toBeDisabled();
+  await noOverflow(page);
+  await view(page, '测算结果');
+  await expect(page.getByTestId('annual-cash')).toBeVisible();
+  await noOverflow(page);
+});

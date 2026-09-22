@@ -2,9 +2,11 @@ import { CITIES } from '../policy';
 import type { CityId } from '../policy/types';
 import { monthlyInsurance, resolveBase } from './social';
 import type { InsuranceBreakdown } from './social';
-import { bonusTax, stockTax, withhold } from './tax';
-import type { MonthInput } from './tax';
-import { round2 } from './format';
+import { bonusTax, stockTax, withholdDetails } from './tax';
+import type { MonthInput, WithholdingDetail } from './tax';
+import { round0, round2 } from './format';
+
+export const CALCULATION_VERSION = '2026.09-v3';
 
 export interface SalaryInput {
   cityId: CityId;
@@ -25,6 +27,7 @@ export interface MonthRow {
   gross: number;
   personalTotal: number;
   tax: number;
+  taxDetail: WithholdingDetail;
   net: number;
   note?: string; // 如“含 13 薪”
 }
@@ -41,6 +44,8 @@ export interface SchemeResult {
   id: 'A' | 'B';
   label: string;
   totalTax: number;
+  cashNet: number;
+  stockNet: number;
   totalNet: number;
 }
 
@@ -49,12 +54,24 @@ export interface AnnualResult {
   socialBase: number;
   hfBase: number;
   insurance: { personal: InsuranceBreakdown; employer: InsuranceBreakdown };
+  housingFundTax: { // 均为月度金额，个人与单位分别适用同一限额
+    monthlyLimit: number;
+    personalDeductible: number;
+    personalExcess: number;
+    employerTaxable: number;
+  };
   monthlyRows: MonthRow[];
   bonuses: BonusRow[];
   schemes: SchemeResult[];
   recommendedId: SchemeResult['id'];
   totals: {
     grossYear: number;
+    cashGrossYear: number;
+    cashNetYear: number;
+    stockGrossYear: number;
+    stockTaxYear: number;
+    stockNetYear: number;
+    recurringCashNetYear: number;
     personalSocialYear: number;
     personalHfYear: number;
     personalTotalYear: number;
@@ -97,6 +114,24 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     p.pension, p.medical, p.unemployment, p.hfBasic, p.hfSupplement,
   ]);
 
+  // 基本与补充共享 12% 限额；模型将已限额的缴存基数也用于税前扣除。
+  const taxFreeRatio = 0.12;
+  const monthlyLimit = round0(hfBase * taxFreeRatio);
+  const personalHf = sum([p.hfBasic, p.hfSupplement]);
+  const employerHf = sum([e.hfBasic, e.hfSupplement]);
+  // 比例未超限时按实际合计免税，避免分项取整以及 7% + 5% 浮点误差造成假超限。
+  const withinTaxLimit = input.hfRatio + input.hfSupplementRatio <= taxFreeRatio + Number.EPSILON;
+  const personalDeductible = withinTaxLimit ? personalHf : Math.min(personalHf, monthlyLimit);
+  const housingFundTax: AnnualResult['housingFundTax'] = {
+    monthlyLimit,
+    personalDeductible,
+    personalExcess: personalHf - personalDeductible,
+    employerTaxable: withinTaxLimit ? 0 : Math.max(employerHf - monthlyLimit, 0),
+  };
+  const personalDeduction = sum([
+    p.pension, p.medical, p.unemployment, personalDeductible,
+  ]);
+
   // 13/14 薪等额外月薪与签字费并入 12 月工资，一起走累计预扣
   const extraCount = Math.max(0, input.salaryMonths - 12);
   const extrasTotal = round2(extraCount * monthlySalary);
@@ -112,9 +147,13 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   const noteA = fmtNote(noteBaseParts);
   const noteB = fmtNote([...noteBaseParts, ...(bonus > 0 ? ['年终奖'] : [])]);
 
-  const months: MonthInput[] = Array.from({ length: 12 }, (_, i) => ({
-    gross: i === 11 ? round2(monthlySalary + extrasTotal + signingBonus) : monthlySalary,
-    personalDeduction: personalMonthly,
+  const cashMonths = Array.from({ length: 12 }, (_, i) =>
+    i === 11 ? round2(monthlySalary + extrasTotal + signingBonus) : monthlySalary,
+  );
+  // 单位超额公积金只加入计税收入，不属于现金工资或到手收入。
+  const months: MonthInput[] = cashMonths.map((gross) => ({
+    gross: round2(gross + housingFundTax.employerTaxable),
+    personalDeduction,
     specialDeduction: input.specialDeductionMonthly,
   }));
 
@@ -125,20 +164,21 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   };
 
   // 股票/股权激励：不并入综合所得，全额单独计税；与年终奖方案无关，两个方案都叠加
+  const stockTaxYear = round2(stockTax(stockIncome));
+  const stockNetYear = round2(stockIncome - stockTaxYear);
   const stockRows: BonusRow[] = [];
   if (stockIncome > 0) {
-    const tax = round2(stockTax(stockIncome));
     stockRows.push({
       label: '股票/股权激励',
       gross: stockIncome,
-      tax,
-      net: round2(stockIncome - tax),
+      tax: stockTaxYear,
+      net: stockNetYear,
       taxMethod: 'annual',
     });
   }
 
   // 方案 A：年终奖单独计税（额外月薪已并入 12 月工资）
-  const taxesA = withhold(months);
+  const taxDetailsA = withholdDetails(months);
   const bonusesA: BonusRow[] = [
     ...(bonus > 0 ? [bonusRow('年终奖', bonus)] : []),
     ...stockRows,
@@ -148,46 +188,59 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
   const monthsB = months.map((m, i) =>
     i === 11 ? { ...m, gross: round2(m.gross + bonus) } : m,
   );
-  const taxesB = withhold(monthsB);
+  const taxDetailsB = withholdDetails(monthsB);
   const bonusesB: BonusRow[] = [...stockRows];
 
-  const grossYear = round2(monthlySalary * 12 + extrasTotal + signingBonus + bonus + stockIncome);
+  const cashGrossYear = round2(monthlySalary * 12 + extrasTotal + signingBonus + bonus);
+  const grossYear = round2(cashGrossYear + stockIncome);
 
   const buildScheme = (
     id: SchemeResult['id'],
     label: string,
-    taxes: number[],
+    taxDetails: WithholdingDetail[],
     bonuses: BonusRow[],
   ): SchemeResult => {
-    const totalTax = round2(sum(taxes) + sum(bonuses.map((b) => b.tax)));
+    const cashTax = sum([
+      ...taxDetails.map((detail) => detail.tax),
+      ...bonuses.filter((b) => b.taxMethod === 'monthly').map((b) => b.tax),
+    ]);
+    const cashNet = round2(cashGrossYear - personalMonthly * 12 - cashTax);
     return {
       id,
       label,
-      totalTax,
-      totalNet: round2(grossYear - personalMonthly * 12 - totalTax),
+      totalTax: round2(cashTax + stockTaxYear),
+      cashNet,
+      stockNet: stockNetYear,
+      totalNet: round2(cashNet + stockNetYear),
     };
   };
 
   const schemes: SchemeResult[] = [
-    buildScheme('A', '年终奖单独计税', taxesA, bonusesA),
-    buildScheme('B', '年终奖并入综合所得', taxesB, bonusesB),
+    buildScheme('A', '年终奖单独计税', taxDetailsA, bonusesA),
+    buildScheme('B', '年终奖并入综合所得', taxDetailsB, bonusesB),
   ];
   const recommendedId = schemes.reduce(
     (best, s) => (s.totalTax < best.totalTax ? s : best),
     schemes[0],
   ).id;
   const rec = schemes.find((s) => s.id === recommendedId)!;
+  const recurringCashNetYear = signingBonus > 0
+    ? computeAnnual({ ...input, signingBonus: 0 }).totals.cashNetYear
+    : rec.cashNet;
 
-  const recTaxes = recommendedId === 'B' ? taxesB : taxesA;
+  const recTaxDetails = recommendedId === 'B' ? taxDetailsB : taxDetailsA;
   const recBonuses = recommendedId === 'B' ? bonusesB : bonusesA;
-  const flowMonths = recommendedId === 'B' ? monthsB : months;
+  const flowCashMonths = recommendedId === 'B'
+    ? cashMonths.map((gross, i) => i === 11 ? round2(gross + bonus) : gross)
+    : cashMonths;
 
-  const monthlyRows: MonthRow[] = flowMonths.map((m, i) => ({
+  const monthlyRows: MonthRow[] = flowCashMonths.map((gross, i) => ({
     month: i + 1,
-    gross: m.gross,
+    gross,
     personalTotal: personalMonthly,
-    tax: recTaxes[i],
-    net: round2(m.gross - personalMonthly - recTaxes[i]),
+    tax: recTaxDetails[i].tax,
+    taxDetail: recTaxDetails[i],
+    net: round2(gross - personalMonthly - recTaxDetails[i].tax),
     note: i === 11 ? (recommendedId === 'B' ? noteB : noteA) : undefined,
   }));
 
@@ -203,12 +256,19 @@ export function computeAnnual(input: SalaryInput): AnnualResult {
     socialBase,
     hfBase,
     insurance,
+    housingFundTax,
     monthlyRows,
     bonuses: recBonuses,
     schemes,
     recommendedId,
     totals: {
       grossYear,
+      cashGrossYear,
+      cashNetYear: rec.cashNet,
+      stockGrossYear: stockIncome,
+      stockTaxYear,
+      stockNetYear,
+      recurringCashNetYear,
       personalSocialYear,
       personalHfYear,
       personalTotalYear: round2(personalSocialYear + personalHfYear),

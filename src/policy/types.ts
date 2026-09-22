@@ -11,6 +11,10 @@ export interface CityPolicy {
   id: CityId;
   name: string;
   year: number;
+  dataVersion: string;
+  reviewedOn: string;
+  coverage: string;
+  sources: { title: string; url: string; status: 'unverified' | 'verified'; period: string }[];
   social: {
     minBase: number;
     maxBase: number;

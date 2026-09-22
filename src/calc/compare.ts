@@ -9,9 +9,15 @@ export interface PlanSnapshot {
   companyName: string; // 用户输入的公司名（可为空，载入回填用）
   cityName: string;
   summary: string;
-  netYear: number; // 税后薪资 + 税后年终奖（推荐方案口径）
+  netYear: number; // 现金 + 股权税后总计，含签字费（推荐方案口径）
+  cashNetYear: number; // 年度税后现金，含签字费，不含股权
+  stockNetYear: number; // 年度税后股权
+  recurringCashNetYear: number; // 不含签字费的年度税后现金，按当前引擎独立重算
   hfTotalYear: number; // 全年公积金总数（个人 + 单位，含补充）
   taxYear: number; // 全年扣税总数
+  policyVersion: string;
+  calculationVersion: string;
+  calculatedAt: string;
   input: SalaryInput; // 载入回填用
 }
 
@@ -66,5 +72,7 @@ export function describeInput(input: SalaryInput): string {
     `公积金 ${formatPercent(input.hfRatio)}`,
   ];
   if (input.hfSupplementRatio > 0) parts.push(`补充 ${formatPercent(input.hfSupplementRatio)}`);
+  if (input.signingBonus > 0) parts.push(`签字费 ${formatMoney(input.signingBonus)}`);
+  if (input.stockIncome > 0) parts.push(`股权 ${formatMoney(input.stockIncome)}`);
   return parts.join(' · ');
 }

@@ -24,8 +24,14 @@ const plan = (id: string, over: Partial<PlanSnapshot> = {}): PlanSnapshot => ({
   cityName: '上海',
   summary: '摘要',
   netYear: 100000,
+  cashNetYear: 100000,
+  stockNetYear: 0,
+  recurringCashNetYear: 100000,
   hfTotalYear: 50000,
   taxYear: 30000,
+  policyVersion: 'shanghai-2026-baseline',
+  calculationVersion: '2026.09-v2',
+  calculatedAt: '2026-09-22T00:00:00.000Z',
   input: baseInput,
   ...over,
 });
@@ -95,6 +101,20 @@ describe('describeInput 参数摘要', () => {
   it('补充比例大于 0 时出现', () => {
     expect(describeInput({ ...baseInput, hfSupplementRatio: 0.05 })).toContain('补充 5%');
   });
+  it('签字费和股权为零时不出现', () => {
+    expect(describeInput(baseInput)).not.toMatch(/签字费|股权/);
+  });
+  it('签字费和股权非零时分别展示', () => {
+    const signing = describeInput({ ...baseInput, signingBonus: 50000 });
+    expect(signing).toContain('签字费 50,000.00');
+    expect(signing).not.toContain('股权');
+    const stock = describeInput({ ...baseInput, stockIncome: 120000 });
+    expect(stock).toContain('股权 120,000.00');
+    expect(stock).not.toContain('签字费');
+    const both = describeInput({ ...baseInput, signingBonus: 50000, stockIncome: 120000 });
+    expect(both).toContain('签字费 50,000.00');
+    expect(both).toContain('股权 120,000.00');
+  });
 });
 
 describe('sortByTotalDesc 按税后+公积金降序', () => {
@@ -120,6 +140,16 @@ describe('sortByTotalDesc 按税后+公积金降序', () => {
     const plans = [plan('a', { netYear: 100000 }), plan('b', { netYear: 200000 })];
     sortByTotalDesc(plans);
     expect(plans.map((p) => p.id)).toEqual(['a', 'b']);
+  });
+
+  it('最优及排序仍使用含股权的 netYear，不改为现金口径', () => {
+    const plans = [
+      plan('cash', { netYear: 150000, cashNetYear: 150000, stockNetYear: 0, recurringCashNetYear: 150000 }),
+      plan('stock', { netYear: 200000, cashNetYear: 50000, stockNetYear: 150000, recurringCashNetYear: 40000 }),
+    ];
+    expect(bestOf(plans).maxNetId).toBe('stock');
+    expect(bestOf(plans).maxTotalId).toBe('stock');
+    expect(sortByTotalDesc(plans).map((p) => p.id)).toEqual(['stock', 'cash']);
   });
 });
 

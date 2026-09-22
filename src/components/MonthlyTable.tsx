@@ -1,63 +1,44 @@
-import { formatMoney } from '../calc/format';
+import { useState } from 'react';
+import { formatMoney, formatPercent } from '../calc/format';
 import type { AnnualResult } from '../calc/annual';
 
 export default function MonthlyTable({ result }: { result: AnnualResult }) {
-  const { monthlyRows, bonuses } = result;
-  const grossSum = monthlyRows.reduce((a, r) => a + r.gross, 0) + bonuses.reduce((a, b) => a + b.gross, 0);
-  const dedSum = monthlyRows.reduce((a, r) => a + r.personalTotal, 0);
-  const taxSum = monthlyRows.reduce((a, r) => a + r.tax, 0) + bonuses.reduce((a, b) => a + b.tax, 0);
-  const netSum = grossSum - dedSum - taxSum;
-
+  const [month, setMonth] = useState(12);
+  const row = result.monthlyRows[month - 1];
+  const detail = row.taxDetail;
+  const previousRate = month > 1 ? result.monthlyRows[month - 2].taxDetail.rate : 0;
   return (
-    <section className="rounded-2xl border border-gray-100/70 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_6px_rgba(0,0,0,0.02)] animate-[fade-in-up_0.4s_ease-out]">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700 tracking-wide">月度明细</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-right text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 text-xs text-slate-400 uppercase tracking-wider">
-              <th scope="col" className="py-3 text-left font-medium">月份</th>
-              <th scope="col" className="py-3 font-medium">税前</th>
-              <th scope="col" className="py-3 font-medium">三险一金</th>
-              <th scope="col" className="py-3 font-medium">个税</th>
-              <th scope="col" className="py-3 font-medium">税后</th>
-            </tr>
-          </thead>
-          <tbody>
-            {monthlyRows.map((r) => (
-              <tr key={r.month} className="border-b border-gray-50 transition-colors hover:bg-gray-50/40">
-                <td className="py-2.5 text-left text-slate-400">
-                  {r.month} 月{r.note && <span className="ml-1 text-[10px] text-accent-dark">（{r.note}）</span>}
-                </td>
-                <td className="text-slate-600">{formatMoney(r.gross)}</td>
-                <td className="text-info">{formatMoney(r.personalTotal)}</td>
-                <td className="text-negative">{formatMoney(r.tax)}</td>
-                <td className="font-semibold text-positive">{formatMoney(r.net)}</td>
-              </tr>
-            ))}
-            {bonuses.map((b) => (
-              <tr key={b.label} className="border-b border-gray-50 bg-accent/[0.02]">
-                <td className="py-2.5 text-left text-accent-dark font-medium">
-                  {b.label}
-                  <span className="ml-1.5 rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-normal text-accent-dark whitespace-nowrap">
-                    {b.taxMethod === 'annual' ? '单独计税·年度表' : '单独计税·月度表'}
-                  </span>
-                </td>
-                <td className="text-slate-600">{formatMoney(b.gross)}</td>
-                <td className="text-slate-300">—</td>
-                <td className="text-negative">{formatMoney(b.tax)}</td>
-                <td className="font-semibold text-positive">{formatMoney(b.net)}</td>
-              </tr>
-            ))}
-            <tr className="text-sm font-semibold">
-              <td className="py-3 text-left text-slate-700">合计</td>
-              <td className="text-slate-700">{formatMoney(grossSum)}</td>
-              <td className="text-info">{formatMoney(dedSum)}</td>
-              <td className="text-negative">{formatMoney(taxSum)}</td>
-              <td className="text-positive">{formatMoney(netSum)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <section className="panel" aria-labelledby="monthly-heading">
+      <div className="panel-heading"><div><h2 id="monthly-heading">每个月的现金流</h2><p className="help">按固定配置模拟 12 个月；累计预扣可能使同薪不同月的到手不同</p></div><span className="pill">按推荐方式估算</span></div>
+      <details className="disclosure">
+        <summary>展开 12 个月工资明细</summary>
+        <div className="table-scroll monthly-desktop" tabIndex={0} role="region" aria-label="月度工资明细，可横向滚动">
+          <table className="data-table"><thead><tr><th scope="col">月份</th><th scope="col">现金到手</th><th scope="col">个税</th><th scope="col">个人社保公积金</th><th scope="col">税前工资</th></tr></thead>
+            <tbody>{result.monthlyRows.map((item) => <tr key={item.month}><th scope="row">{item.month} 月{item.note && <span className="row-note">{item.note}</span>}</th><td className="emphasized-cell">{formatMoney(item.net)}</td><td>{formatMoney(item.tax)}</td><td>{formatMoney(item.personalTotal)}</td><td>{formatMoney(item.gross)}</td></tr>)}</tbody>
+          </table>
+        </div>
+        <div className="mobile-months">{result.monthlyRows.map((item) => <details className="month-card" key={item.month}>
+          <summary><span>{item.month} 月</span><strong className="money">¥{formatMoney(item.net)}</strong></summary>
+          <p className="help">税前 ¥{formatMoney(item.gross)} · 个税 ¥{formatMoney(item.tax)}<br />个人社保公积金 ¥{formatMoney(item.personalTotal)}{item.note && <><br />{item.note}</>}</p>
+        </details>)}</div>
+      </details>
+      {result.bonuses.length > 0 && <div className="payout-list">{result.bonuses.map((bonus) => <div className="payout" key={bonus.label}>
+        <div><h3>{bonus.label}</h3><p className="help">{bonus.taxMethod === 'annual' ? '股权税后估值 · 非现金' : '现金奖金 · 单独计税'}<br />税前 ¥{formatMoney(bonus.gross)} · 个税 ¥{formatMoney(bonus.tax)}</p></div><strong className="money">¥{formatMoney(bonus.net)}</strong>
+      </div>)}</div>}
+      <details className="disclosure">
+        <summary>为什么这个月扣了这些税？</summary>
+        <div className="detail-toolbar"><label htmlFor="explain-month">查看月份</label><select id="explain-month" className="form-control" value={month} onChange={(event) => setMonth(Number(event.target.value))}>{result.monthlyRows.map((item) => <option key={item.month} value={item.month}>{item.month} 月</option>)}</select><span className="pill">累计预扣税率 {formatPercent(detail.rate)}</span></div>
+        <div className="formula-grid">
+          <div><span className="muted">累计计税收入</span><strong className="money">¥{formatMoney(detail.cumulativeGross)}</strong></div>
+          <div><span className="muted">累计减除及扣除</span><strong className="money">¥{formatMoney(detail.cumulativeDeduction)}</strong></div>
+          <div><span className="muted">累计应纳税所得额</span><strong className="money">¥{formatMoney(detail.cumulativeTaxable)}</strong></div>
+          <div><span className="muted">此前已预扣税额</span><strong className="money">¥{formatMoney(detail.priorTax)}</strong></div>
+        </div>
+        <p className="formula money">累计税额 = {formatMoney(detail.cumulativeTaxable)} × {formatPercent(detail.rate)} − {formatMoney(detail.quickDeduction)} = {formatMoney(detail.cumulativeTax)} 元<br />本月预扣 = max(0, {formatMoney(detail.cumulativeTax)} − {formatMoney(detail.priorTax)}) = <strong>{formatMoney(detail.tax)} 元</strong></p>
+        <p className="help">累计扣除含每月 5,000 元基本减除费用、个人社保、限额内公积金和已填专项附加扣除；速算扣除数体现累进计税，并非全部收入直接乘最高税率。</p>
+        {result.housingFundTax.employerTaxable > 0 && <p className="help">累计计税收入含单位超限公积金 ¥{formatMoney(result.housingFundTax.employerTaxable * month)}，这部分是应税福利，不计入现金工资；个人超限缴存额也未纳入税前扣除。</p>}
+        {detail.rate > previousRate && month > 1 && <p className="notice notice-neutral">本月累计应税收入进入了更高税率档位，税率由 {formatPercent(previousRate)} 变为 {formatPercent(detail.rate)}，因此相同月薪的到手金额可能下降。</p>}
+      </details>
     </section>
   );
 }

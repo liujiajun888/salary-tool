@@ -62,7 +62,18 @@ export interface MonthInput {
   specialDeduction: number;  // 当月专项附加扣除
 }
 
-export function withhold(months: MonthInput[]): number[] {
+export interface WithholdingDetail {
+  cumulativeGross: number;
+  cumulativeDeduction: number;
+  cumulativeTaxable: number;
+  rate: number;
+  quickDeduction: number;
+  cumulativeTax: number;
+  priorTax: number;
+  tax: number;
+}
+
+export function withholdDetails(months: MonthInput[]): WithholdingDetail[] {
   let cumGross = 0;
   let cumDeduct = 0;
   let cumPaid = 0;
@@ -70,9 +81,24 @@ export function withhold(months: MonthInput[]): number[] {
     cumGross += m.gross;
     cumDeduct += 5000 + m.personalDeduction + m.specialDeduction;
     const cumTaxable = Math.max(0, cumGross - cumDeduct);
+    const bracket = ANNUAL_BRACKETS.find((b) => cumTaxable <= b.limit)!;
     const cumTax = round2(cumulativeTax(cumTaxable));
-    const tax = round2(Math.max(0, cumTax - cumPaid));
+    const priorTax = cumPaid;
+    const tax = round2(Math.max(0, cumTax - priorTax));
     cumPaid = round2(cumPaid + tax);
-    return tax;
+    return {
+      cumulativeGross: cumGross,
+      cumulativeDeduction: cumDeduct,
+      cumulativeTaxable: cumTaxable,
+      rate: bracket.rate,
+      quickDeduction: bracket.quickDeduction,
+      cumulativeTax: cumTax,
+      priorTax,
+      tax,
+    };
   });
+}
+
+export function withhold(months: MonthInput[]): number[] {
+  return withholdDetails(months).map((detail) => detail.tax);
 }
