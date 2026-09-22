@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { CITIES } from './policy';
 import { computeAnnual } from './calc/annual';
@@ -8,13 +8,10 @@ import { formatMoney } from './calc/format';
 import { createPlanSnapshot, parsePlanImport, restoreForm, restorePlans, serializePlans } from './storage';
 import type { FormState } from './storage';
 import InputPanel from './components/InputPanel';
-import SummaryCards from './components/SummaryCards';
-import MonthlyTable from './components/MonthlyTable';
-import InsuranceCard from './components/InsuranceCard';
+import ResultPanel from './components/ResultPanel';
 import PlanComparePanel from './components/PlanComparePanel';
 import Footer from './components/Footer';
 
-const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
 const FORM_KEY = 'salary-tool-form';
 const PLANS_KEY = 'salary-tool-plans';
 type View = 'input' | 'results' | 'compare';
@@ -39,6 +36,7 @@ export default function App() {
   const [formStorageError, setFormStorageError] = useState(false);
   const [planStorageError, setPlanStorageError] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [view, setView] = useState<View>('input');
   const [wide, setWide] = useState(() => window.matchMedia('(min-width: 980px)').matches);
@@ -100,15 +98,15 @@ export default function App() {
     }
     const snapshot = createPlanSnapshot(form, editingId ?? crypto.randomUUID(), planName(form.companyName, current.filter((plan) => plan.id !== editingId)));
     commitPlans(editingId ? current.map((plan) => plan.id === editingId ? snapshot : plan) : [...current, snapshot]);
-    setNotice(`已${editingId ? '更新' : '保存'}「${snapshot.name}」；请留意浏览器存储状态并定期导出备份。`);
+    setNotice(`已${editingId ? '更新' : '保存'}「${snapshot.name}」。`);
+    setSelectedPlanId(snapshot.id);
     setEditingId(null); beforeEdit.current = null; goTo('compare');
   };
-  const loadPlan = (plan: PlanSnapshot, edit: boolean) => {
-    if (edit && !beforeEdit.current) beforeEdit.current = form;
-    if (!edit) beforeEdit.current = null;
+  const editPlan = (plan: PlanSnapshot) => {
+    if (!beforeEdit.current) beforeEdit.current = form;
     setForm({ ...plan.input, companyName: plan.companyName });
-    setEditingId(edit ? plan.id : null); setRevision((previous) => previous + 1); goTo('input');
-    setNotice(edit ? `正在编辑「${plan.name}」；修改后点击更新方案。` : `已载入「${plan.name}」，修改参数不会覆盖原方案。`);
+    setEditingId(plan.id); setRevision((previous) => previous + 1); goTo('input');
+    setNotice('');
   };
   const cancelEdit = () => {
     if (beforeEdit.current) setForm(beforeEdit.current);
@@ -140,7 +138,8 @@ export default function App() {
       const current = latestPlans();
       if (current.length + imported.length > MAX_PLANS) throw new Error(`合计超过 ${MAX_PLANS} 个方案，请先移除部分已有方案；未覆盖任何数据。`);
       commitPlans([...current, ...imported]);
-      setNotice(`已导入 ${imported.length} 个方案，并按当前政策与算法重算。`); goTo('compare');
+      setSelectedPlanId(imported[0].id);
+      setNotice(`已导入 ${imported.length} 个方案。`); goTo('compare');
     } catch (error) { setNotice(error instanceof Error ? error.message : '无法读取方案文件，原数据未改变。'); }
     finally { setImporting(false); }
   };
@@ -148,7 +147,7 @@ export default function App() {
   return (
     <div className="shell">
       <a className="skip-link" href="#workspace">跳转到薪资测算</a>
-      <header className="app-header"><div className="brand"><span className="brand-mark" aria-hidden="true">¥</span><div><h1>薪资计算器</h1><p className="help">看清现金、权益与差额，做更有依据的 Offer 选择</p></div></div><div className="actions desktop-only"><span className="pill">沪杭薪酬估算</span><button className="button button-secondary" onClick={() => goTo('compare')}>方案对比 · {plans.length}</button></div></header>
+      <header className="app-header"><div className="brand"><span className="brand-mark" aria-hidden="true">¥</span><h1>薪资计算器</h1></div><button className="button button-secondary desktop-only" onClick={() => goTo('compare')}>方案对比 · {plans.length}</button></header>
       <nav className="mobile-nav" aria-label="测算分区"><div className="segmented">{([['input', '薪资参数'], ['results', '测算结果'], ['compare', `方案对比 ${plans.length}`]] as const).map(([id, label]) => <button key={id} aria-pressed={view === id} aria-controls={id} onClick={() => goTo(id)}>{label}</button>)}</div></nav>
       {(formStorageError || planStorageError) && <div className="notice status-banner" role="alert">浏览器存储不可用，修改只保留在本次页面中；请导出方案备份。</div>}
       {notice && <div className="notice notice-neutral status-banner" role="status"><span>{notice}</span><button className="button button-quiet button-small" aria-label="关闭提示" onClick={() => setNotice('')}>关闭</button></div>}
@@ -157,15 +156,15 @@ export default function App() {
           <InputPanel key={revision} form={form} policy={policy} socialBase={result.socialBase} hfBase={result.hfBase} patch={(patch) => setForm((previous) => ({ ...previous, ...patch }))} onSave={savePlan} canSave={!importing && (!!editingId || plans.length < MAX_PLANS)} editingName={editingPlan?.name} onCancelEdit={cancelEdit} />
         </div>
         <div className="mobile-pane" data-active={view === 'results'} id="results">
-          {valid ? <div className="results-stack"><SummaryCards result={result} input={form} />{(wide || view === 'results') && <Suspense fallback={<div className="panel loading-panel">正在加载现金流图表…</div>}><MonthlyChart result={result} /></Suspense>}<MonthlyTable result={result} /><InsuranceCard result={result} /></div> : <section className="panel empty-state"><h2>先填写税前月薪</h2><p>月薪需大于 0；填写后可查看全年现金收入、股权估值及税费明细。</p><button className="button button-primary" onClick={() => goTo('input')}>填写薪资参数</button></section>}
+          {valid ? <ResultPanel result={result} input={form} active={wide || view === 'results'} /> : <section className="panel empty-state"><h2>先填写税前月薪</h2><p>月薪需大于 0；填写后可查看全年现金收入、股权估值及税费明细。</p><button className="button button-primary" onClick={() => goTo('input')}>填写薪资参数</button></section>}
         </div>
         <div className="compare-pane mobile-pane" data-active={view === 'compare'} id="compare">
-          <PlanComparePanel plans={plans} editingId={editingId} onEdit={(plan) => loadPlan(plan, true)} onLoad={(plan) => loadPlan(plan, false)} onDelete={deletePlan} onSave={savePlan} canSave={valid && !importing && (!!editingId || plans.length < MAX_PLANS)} onExport={exportPlans} onImport={() => fileInput.current?.click()} importing={importing} />
+          <PlanComparePanel plans={plans} selectedId={selectedPlanId} onSelect={(id) => { setSelectedPlanId(id); setView('compare'); setNotice(''); }} onEdit={editPlan} onDelete={deletePlan} onExport={exportPlans} onImport={() => fileInput.current?.click()} importing={importing} active={wide || view === 'compare'} />
           <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={importPlans} aria-label="导入方案文件" />
         </div>
       </main>
       <Footer />
-      <div className="mobile-bottom"><div><p className="stat-note">年度现金到手 · 估算</p><strong className="money">{valid ? `¥${formatMoney(result.totals.cashNetYear)}` : '等待输入'}</strong></div><button className="button button-primary" onClick={() => goTo(view === 'results' ? 'input' : 'results')}>{view === 'results' ? '调整参数' : '查看结果'}</button></div>
+      {view !== 'compare' && <div className="mobile-bottom"><div><p className="stat-note">年度现金到手</p><strong className="money">{valid ? `¥${formatMoney(result.totals.cashNetYear)}` : '等待输入'}</strong></div><button className="button button-primary" onClick={() => goTo(view === 'results' ? 'input' : 'results')}>{view === 'results' ? '调整参数' : '查看结果'}</button></div>}
     </div>
   );
 }

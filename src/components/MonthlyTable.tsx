@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { formatMoney, formatPercent } from '../calc/format';
 import type { AnnualResult } from '../calc/annual';
 
 export default function MonthlyTable({ result }: { result: AnnualResult }) {
+  const headingId = useId();
+  const monthId = useId();
   const [month, setMonth] = useState(12);
   const row = result.monthlyRows[month - 1];
   const detail = row.taxDetail;
   const previousRate = month > 1 ? result.monthlyRows[month - 2].taxDetail.rate : 0;
   return (
-    <section className="panel" aria-labelledby="monthly-heading">
-      <div className="panel-heading"><div><h2 id="monthly-heading">每个月的现金流</h2><p className="help">按固定配置模拟 12 个月；累计预扣可能使同薪不同月的到手不同</p></div><span className="pill">按推荐方式估算</span></div>
+    <section className="panel" aria-labelledby={headingId}>
+      <h2 id={headingId}>月度明细</h2>
       <details className="disclosure">
         <summary>展开 12 个月工资明细</summary>
         <div className="table-scroll monthly-desktop" tabIndex={0} role="region" aria-label="月度工资明细，可横向滚动">
@@ -27,7 +29,7 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
       </div>)}</div>}
       <details className="disclosure">
         <summary>为什么这个月扣了这些税？</summary>
-        <div className="detail-toolbar"><label htmlFor="explain-month">查看月份</label><select id="explain-month" className="form-control" value={month} onChange={(event) => setMonth(Number(event.target.value))}>{result.monthlyRows.map((item) => <option key={item.month} value={item.month}>{item.month} 月</option>)}</select><span className="pill">累计预扣税率 {formatPercent(detail.rate)}</span></div>
+        <div className="detail-toolbar"><label htmlFor={monthId}>查看月份</label><select id={monthId} className="form-control" value={month} onChange={(event) => setMonth(Number(event.target.value))}>{result.monthlyRows.map((item) => <option key={item.month} value={item.month}>{item.month} 月</option>)}</select><span className="pill">累计预扣税率 {formatPercent(detail.rate)}</span></div>
         <div className="formula-grid">
           <div><span className="muted">累计计税收入</span><strong className="money">¥{formatMoney(detail.cumulativeGross)}</strong></div>
           <div><span className="muted">累计减除及扣除</span><strong className="money">¥{formatMoney(detail.cumulativeDeduction)}</strong></div>

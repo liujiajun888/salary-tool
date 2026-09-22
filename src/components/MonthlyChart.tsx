@@ -1,12 +1,14 @@
+import { useId } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import { formatMoney } from '../calc/format';
 import type { AnnualResult } from '../calc/annual';
 
 export default function MonthlyChart({ result }: { result: AnnualResult }) {
+  const headingId = useId();
   const data = result.monthlyRows.map((row) => ({ name: `${row.month}月`, 现金到手: row.net, 个税: row.tax, 个人社保公积金: row.personalTotal }));
   return (
-    <section className="panel" aria-labelledby="chart-heading">
-      <div className="panel-heading"><div><h2 id="chart-heading">月度工资构成</h2><p className="help">工资现金流概览 · 单独计税奖金与股权在明细中另列</p></div><span className="pill">元 / 月</span></div>
+    <section aria-labelledby={headingId}>
+      <h3 id={headingId} className="help">工资构成 · 元 / 月，单独计税奖金与股权另列</h3>
       <div className="chart-frame">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <BarChart data={data} margin={{ top: 6, right: 0, left: -18, bottom: 0 }} accessibilityLayer>

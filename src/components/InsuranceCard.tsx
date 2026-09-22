@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { formatMoney } from '../calc/format';
 import type { AnnualResult } from '../calc/annual';
 import type { InsuranceBreakdown } from '../calc/social';
@@ -13,9 +14,10 @@ const ROWS: { key: keyof InsuranceBreakdown; label: string }[] = [
 
 export default function InsuranceCard({ result }: { result: AnnualResult }) {
   const { personal, employer } = result.insurance;
+  const headingId = useId();
   return (
-    <section className="panel" aria-labelledby="insurance-heading">
-      <div className="panel-heading"><div><h2 id="insurance-heading">社保与公积金</h2><p className="help">个人月缴 ¥{formatMoney(result.totals.personalTotalYear / 12)} · 单位月缴 ¥{formatMoney(result.totals.employerTotalYear / 12)}</p></div><span className="pill">缴费估算</span></div>
+    <section className="panel" aria-labelledby={headingId}>
+      <h2 id={headingId}>社保与公积金</h2>
       <details className="disclosure"><summary>展开个人与单位缴费明细</summary>
         <p className="help">采用社保基数 ¥{formatMoney(result.socialBase)}、公积金基数 ¥{formatMoney(result.hfBase)}；单位工伤采用典型费率，单位公积金按与个人相同比例估算。</p>
         <div className="table-scroll" tabIndex={0} role="region" aria-label="社保公积金缴费明细，可横向滚动">
