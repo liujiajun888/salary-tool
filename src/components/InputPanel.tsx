@@ -36,8 +36,6 @@ function NumberField({ value, onChange, id, placeholder, describedBy }: {
 
 export default function InputPanel({ form, policy, socialBase, hfBase, patch, onSave, canSave, editingName, onCancelEdit }: Props) {
   const [showDeductions, setShowDeductions] = useState(false);
-  const [extrasOpen, setExtrasOpen] = useState(form.signingBonus > 0 || form.stockIncome > 0);
-  const [basesOpen, setBasesOpen] = useState(form.customSocialBase !== null || form.customHfBase !== null);
   const cityClick = (city: CityPolicy) => {
     if (city.id === form.cityId) return;
     patch({ cityId: city.id, hfRatio: city.housingFund.defaultRatio, hfSupplementRatio: 0, customSocialBase: null, customHfBase: null });
@@ -68,12 +66,11 @@ export default function InputPanel({ form, policy, socialBase, hfBase, patch, on
       {form.monthlySalary <= 0 && <p className="help negative" role="status">请输入大于 0 的税前月薪后查看结果。</p>}
       <div className="section-label">奖金与股权</div>
       <div className="field"><label htmlFor="bonus">全年一次性奖金</label><NumberField id="bonus" value={form.bonus} onChange={(value) => patch({ bonus: value ?? 0 })} describedBy="bonus-help" /><p className="help" id="bonus-help">勿与额外薪数重复填写。</p></div>
-      <details className="disclosure" open={extrasOpen} onToggle={(event) => setExtrasOpen(event.currentTarget.open)}>
-        <summary>签字费与股权激励（选填）</summary>
+      <div>
         <div className="field"><label htmlFor="signing-bonus">签字费</label><NumberField id="signing-bonus" value={form.signingBonus} onChange={(value) => patch({ signingBonus: value ?? 0 })} describedBy="signing-help" /><p className="help" id="signing-help">仅计首年，假设并入 12 月工资计税。</p></div>
         <div className="field"><label htmlFor="stock-income">本年度股权激励应税收入</label><NumberField id="stock-income" value={form.stockIncome} onChange={(value) => patch({ stockIncome: value ?? 0 })} describedBy="stock-help" /><p className="help" id="stock-help">填全年应税收入合计，非股票市值或交易收益；税后估值不计入现金。</p></div>
         {form.stockIncome > 0 && <div className="notice">仅支持符合单独计税条件的股权激励，请向单位确认资格及应税金额。</div>}
-      </details>
+      </div>
       <div className="section-label">社保与扣除</div>
       <div className="field-grid">
         <div className="field"><label htmlFor="hf-ratio">个人公积金比例</label><select id="hf-ratio" className="form-control" value={form.hfRatio} onChange={(event) => patch({ hfRatio: Number(event.target.value) })}>{policy.housingFund.ratioOptions.map((ratio) => <option key={ratio} value={ratio}>{formatPercent(ratio)}</option>)}</select></div>
@@ -83,13 +80,12 @@ export default function InputPanel({ form, policy, socialBase, hfBase, patch, on
       <div className="field field-spaced"><label htmlFor="special-deduction">每月专项附加扣除合计</label><NumberField id="special-deduction" value={form.specialDeductionMonthly} onChange={(value) => patch({ specialDeductionMonthly: value ?? 0 })} describedBy="deduction-help" /><p className="help" id="deduction-help">填写个税 App 中已确认的每月扣除额。</p></div>
       <button className="button button-quiet button-small" aria-expanded={showDeductions} aria-controls="deduction-helper" onClick={() => setShowDeductions(!showDeductions)}>{showDeductions ? '收起分类合计' : '按扣除项目辅助合计'}</button>
       {showDeductions && <DeductionHelper onApply={(total) => { patch({ specialDeductionMonthly: total }); setShowDeductions(false); }} />}
-      <details className="disclosure" open={basesOpen} onToggle={(event) => setBasesOpen(event.currentTarget.open)}>
-        <summary>缴费基数 · 社保 ¥{formatMoney(socialBase)} / 公积金 ¥{formatMoney(hfBase)}</summary>
-        <p className="help">默认按月薪估算，可自定义；均按城市上下限计费，实际可能采用上年月均工资。</p>
-        <div className="field field-spaced"><label htmlFor="custom-social-base">社保基数</label><NumberField id="custom-social-base" placeholder={`自动 ${formatMoney(socialBase)}`} value={form.customSocialBase} onChange={(value) => patch({ customSocialBase: value })} /></div>
+      <div className="field-grid field-spaced">
+        <div className="field"><label htmlFor="custom-social-base">社保基数</label><NumberField id="custom-social-base" placeholder={`自动 ${formatMoney(socialBase)}`} value={form.customSocialBase} onChange={(value) => patch({ customSocialBase: value })} /></div>
         <div className="field"><label htmlFor="custom-hf-base">公积金基数</label><NumberField id="custom-hf-base" placeholder={`自动 ${formatMoney(hfBase)}`} value={form.customHfBase} onChange={(value) => patch({ customHfBase: value })} /></div>
-        {overridden && <button className="button button-quiet button-small" onClick={() => patch({ customSocialBase: null, customHfBase: null })}>恢复自动基数</button>}
-      </details>
+      </div>
+      <p className="help" id="base-help">实际基数：社保 ¥{formatMoney(socialBase)} / 公积金 ¥{formatMoney(hfBase)}，受城市上下限限制。</p>
+      {overridden && <button className="button button-quiet button-small" onClick={() => patch({ customSocialBase: null, customHfBase: null })}>恢复自动基数</button>}
       <div className="disclosure">
         <button className="button button-primary full-width" disabled={!canSave || form.monthlySalary <= 0} onClick={onSave}>{editingName ? '更新方案' : '保存为对比方案'}</button>
         {editingName && <button className="button button-quiet full-width" onClick={onCancelEdit}>取消编辑</button>}

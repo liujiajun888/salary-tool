@@ -11,9 +11,7 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
   const previousRate = month > 1 ? result.monthlyRows[month - 2].taxDetail.rate : 0;
   return (
     <section className="panel" aria-labelledby={headingId}>
-      <h2 id={headingId}>月度明细</h2>
-      <details className="disclosure">
-        <summary>展开 12 个月工资明细</summary>
+      <div className="panel-heading"><h2 id={headingId}>月度明细</h2><span className="muted small">元</span></div>
         <div className="table-scroll monthly-desktop" tabIndex={0} role="region" aria-label="月度工资明细，可横向滚动">
           <table className="data-table"><thead><tr><th scope="col">月份</th><th scope="col">现金到手</th><th scope="col">个税</th><th scope="col">个人社保公积金</th><th scope="col">税前工资</th></tr></thead>
             <tbody>{result.monthlyRows.map((item) => <tr key={item.month}><th scope="row">{item.month} 月{item.note && <span className="row-note">{item.note}</span>}</th><td className="emphasized-cell">{formatMoney(item.net)}</td><td>{formatMoney(item.tax)}</td><td>{formatMoney(item.personalTotal)}</td><td>{formatMoney(item.gross)}</td></tr>)}</tbody>
@@ -23,7 +21,6 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
           <summary><span>{item.month} 月</span><strong className="money">¥{formatMoney(item.net)}</strong></summary>
           <p className="help">税前 ¥{formatMoney(item.gross)} · 个税 ¥{formatMoney(item.tax)}<br />个人社保公积金 ¥{formatMoney(item.personalTotal)}{item.note && <><br />{item.note}</>}</p>
         </details>)}</div>
-      </details>
       {result.bonuses.length > 0 && <div className="payout-list">{result.bonuses.map((bonus) => <div className="payout" key={bonus.label}>
         <div><h3>{bonus.label}</h3><p className="help">{bonus.taxMethod === 'annual' ? '股权税后估值 · 非现金' : '现金奖金 · 单独计税'}<br />税前 ¥{formatMoney(bonus.gross)} · 个税 ¥{formatMoney(bonus.tax)}</p></div><strong className="money">¥{formatMoney(bonus.net)}</strong>
       </div>)}</div>}
