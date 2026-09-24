@@ -43,6 +43,40 @@ test('default cash, no-bonus state and responsive layout', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('phone monthly breakdowns are visible without expanding and update with inputs', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const months = page.locator('.mobile-months .month-card');
+  await expect(months).toHaveCount(12);
+  await expect(page.locator('.mobile-months details, .mobile-months summary')).toHaveCount(0);
+  for (let index = 0; index < 12; index++) {
+    await expect(months.nth(index).getByRole('heading', { name: `${index + 1} 月`, exact: true })).toBeVisible();
+    await expect(months.nth(index).locator('dt')).toHaveText(['税前工资', '个税', '个人社保公积金']);
+    for (const value of await months.nth(index).locator('dd').all()) await expect(value).toBeVisible();
+  }
+  await expect(months.first().locator('.month-net')).toHaveText('到手 ¥16,155.00');
+  await expect(months.first().locator('dd')).toHaveText(['20,000.00', '345.00', '3,500.00']);
+  await page.locator('#monthly-salary').fill('30000');
+  await page.locator('#salary-months').selectOption('13');
+  await page.locator('#bonus').fill('100000');
+  await page.locator('#signing-bonus').fill('50000');
+  await expect(months.last().locator('dd').first()).toHaveText('110,000.00');
+  await expect(months.last().locator('.help')).toBeVisible();
+  await expect(months.last().locator('.help')).toContainText('签字费');
+  for (const width of [320, 390, 540]) {
+    await page.setViewportSize({ width, height: 844 });
+    await months.last().scrollIntoViewIfNeeded();
+    await noOverflow(page);
+  }
+  await page.locator('#monthly-salary').fill('1000000000');
+  await page.setViewportSize({ width: 320, height: 844 });
+  await months.last().scrollIntoViewIfNeeded();
+  await noOverflow(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.locator('.mobile-months')).toBeHidden();
+  await expect(page.locator('.monthly-desktop')).toBeVisible();
+});
+
 test('cash and equity are isolated, signing bonus is removed by recalculation', async ({ page }) => {
   await page.goto('/');
   await page.locator('#monthly-salary').fill('30000');

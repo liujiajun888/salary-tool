@@ -17,10 +17,15 @@ export default function MonthlyTable({ result }: { result: AnnualResult }) {
             <tbody>{result.monthlyRows.map((item) => <tr key={item.month}><th scope="row">{item.month} 月{item.note && <span className="row-note">{item.note}</span>}</th><td className="emphasized-cell">{formatMoney(item.net)}</td><td>{formatMoney(item.tax)}</td><td>{formatMoney(item.personalTotal)}</td><td>{formatMoney(item.gross)}</td></tr>)}</tbody>
           </table>
         </div>
-        <div className="mobile-months">{result.monthlyRows.map((item) => <details className="month-card" key={item.month}>
-          <summary><span>{item.month} 月</span><strong className="money">¥{formatMoney(item.net)}</strong></summary>
-          <p className="help">税前 ¥{formatMoney(item.gross)} · 个税 ¥{formatMoney(item.tax)}<br />个人社保公积金 ¥{formatMoney(item.personalTotal)}{item.note && <><br />{item.note}</>}</p>
-        </details>)}</div>
+        <ol className="mobile-months" aria-label="每月工资明细">{result.monthlyRows.map((item) => <li className="month-card" key={item.month}>
+          <div className="month-heading"><h3>{item.month} 月</h3><p className="month-net"><span className="muted small">到手 </span><strong className="money">¥{formatMoney(item.net)}</strong></p></div>
+          <dl className="month-breakdown">
+            <div><dt>税前工资</dt><dd className="money">{formatMoney(item.gross)}</dd></div>
+            <div><dt>个税</dt><dd className="money">{formatMoney(item.tax)}</dd></div>
+            <div><dt>个人社保公积金</dt><dd className="money">{formatMoney(item.personalTotal)}</dd></div>
+          </dl>
+          {item.note && <p className="help">{item.note}</p>}
+        </li>)}</ol>
       {result.bonuses.length > 0 && <div className="payout-list">{result.bonuses.map((bonus) => <div className="payout" key={bonus.label}>
         <div><h3>{bonus.label}</h3><p className="help">{bonus.taxMethod === 'annual' ? '股权税后估值 · 非现金' : '现金奖金 · 单独计税'}<br />税前 ¥{formatMoney(bonus.gross)} · 个税 ¥{formatMoney(bonus.tax)}</p></div><strong className="money">¥{formatMoney(bonus.net)}</strong>
       </div>)}</div>}
