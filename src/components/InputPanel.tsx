@@ -30,8 +30,9 @@ function NumberField({ value, onChange, id, placeholder, describedBy }: {
     setDraft(Number(text) > 1_000_000_000 ? String(number) : text);
     onChange(number);
   };
-  return <input id={id} className="form-control" type="text" inputMode="decimal" autoComplete="off" aria-describedby={describedBy}
-    placeholder={placeholder} value={draft ?? (value === null ? '' : String(value))} onChange={handle} onBlur={() => setDraft(null)} />;
+  const displayValue = draft ?? (value === null ? '' : String(value));
+  return <input id={id} className={`form-control${displayValue.length > 8 ? ' form-control-long' : ''}`} type="text" inputMode="decimal" autoComplete="off" aria-describedby={describedBy}
+    placeholder={placeholder} value={displayValue} onChange={handle} onBlur={() => setDraft(null)} />;
 }
 
 export default function InputPanel({ form, policy, socialBase, hfBase, patch, onSave, canSave, editingName, onCancelEdit }: Props) {
@@ -43,7 +44,7 @@ export default function InputPanel({ form, policy, socialBase, hfBase, patch, on
   const overridden = form.customSocialBase !== null || form.customHfBase !== null;
   return (
     <section className="panel" aria-labelledby="input-heading">
-      <div className="panel-heading"><h2 id="input-heading">薪资参数</h2></div>
+      <div className="panel-heading"><h2 className="section-heading" id="input-heading"><span className="section-number" aria-hidden="true">01</span>薪资参数</h2></div>
       {editingName && <div className="notice notice-neutral">正在编辑「{editingName}」，保存后覆盖原方案。</div>}
       <div className="section-label">基本薪资</div>
       <div className="field">
@@ -56,7 +57,7 @@ export default function InputPanel({ form, policy, socialBase, hfBase, patch, on
           {CITY_LIST.map((city) => <button key={city.id} aria-pressed={form.cityId === city.id} onClick={() => cityClick(city)}>{city.name}</button>)}
         </div>
       </div>
-      <div className="field-grid">
+      <div className="field-grid salary-fields">
         <div className="field"><label htmlFor="monthly-salary">税前月薪</label><NumberField id="monthly-salary" value={form.monthlySalary} onChange={(value) => patch({ monthlySalary: value ?? 0 })} describedBy="salary-help" /></div>
         <div className="field"><label htmlFor="salary-months">全年薪数</label><select id="salary-months" className="form-control" value={form.salaryMonths} onChange={(event) => patch({ salaryMonths: Number(event.target.value) })}>
           {[12, 13, 14, 15, 16].map((months) => <option key={months} value={months}>{months} 薪</option>)}

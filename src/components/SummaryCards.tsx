@@ -10,10 +10,11 @@ export default function SummaryCards({ result, input }: { result: AnnualResult; 
   const saving = round2(Math.abs(schemes[0].totalTax - schemes[1].totalTax));
   const hfTotal = round2(totals.personalHfYear + totals.employerHfYear);
   const hasStock = input.stockIncome > 0;
+  const [cashWhole, cashFraction] = formatMoney(totals.cashNetYear).split('.');
   return (
     <section className="panel hero-card" aria-labelledby={resultHeadingId}>
-      <div className="panel-heading"><h2 id={resultHeadingId}>年度现金到手</h2></div>
-      <p className="hero-value money" data-testid="annual-cash"><small>¥</small>{formatMoney(totals.cashNetYear)}</p>
+      <div className="panel-heading"><h2 className="section-heading" id={resultHeadingId}><span className="section-number" aria-hidden="true">02</span>年度现金到手</h2></div>
+      <p className={`hero-value money${cashWhole.length > 10 ? ' hero-value-long' : ''}`} data-testid="annual-cash"><small>¥</small>{cashWhole}<span className="hero-fraction">.{cashFraction}</span></p>
       {totals.cashNetYear < 0 && <p className="notice">收入不足以覆盖最低基数缴费；负数为模型收支差额，请核实任职与实际缴费。</p>}
       <p className="hero-caption">不含公积金与股权</p>
       <div className="hero-caption"><span>现金税前 ¥{formatMoney(totals.cashGrossYear)}</span><span>工资奖金个税 ¥{formatMoney(totals.taxYear - totals.stockTaxYear)}</span></div>

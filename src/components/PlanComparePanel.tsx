@@ -27,7 +27,7 @@ export default function PlanComparePanel({ plans, selectedId, onSelect, onEdit, 
   ];
   return (
     <section className="panel" aria-labelledby="compare-heading">
-      <div className="panel-heading"><h2 id="compare-heading">方案对比</h2><span className="pill">{plans.length} / {MAX_PLANS}</span></div>
+      <div className="panel-heading"><h2 className="section-heading" id="compare-heading"><span className="section-number" aria-hidden="true">03</span>方案对比</h2><span className="pill">{plans.length} / {MAX_PLANS}</span></div>
       <button className="button button-primary full-width" disabled={!canSave} onClick={onSave}>{editing ? '更新当前方案' : '保存当前方案'}</button>
       {plans.length === 0 ? <p className="empty-state">保存当前参数，即可对比不同方案。</p> : <>
         <p className="help">点击方案，回填参数并查看结果。</p>

@@ -403,6 +403,69 @@ test('layout remains contained across phone tablet and desktop breakpoints', asy
   }
 });
 
+test('cash typography preserves cents and fits a single line at extreme amounts', async ({ page }) => {
+  await page.goto('/');
+  const cash = page.getByTestId('annual-cash');
+  await expect(cash).toHaveText('¥186,720.00');
+  await expect(cash.locator('.hero-fraction')).toHaveText('.00');
+  const salaryInput = page.locator('#monthly-salary');
+  for (const salary of ['20000.50', '1', '999999999.99', '1000000000']) {
+    await salaryInput.fill(salary);
+    for (const width of [320, 390, 980, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(salaryInput).toHaveValue(salary);
+      const inputSize = await salaryInput.evaluate((element: HTMLInputElement) => {
+        const style = getComputedStyle(element);
+        const context = document.createElement('canvas').getContext('2d')!;
+        context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        return {
+          textWidth: context.measureText(element.value).width + parseFloat(style.letterSpacing) * (element.value.length - 1),
+          availableWidth: element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+        };
+      });
+      expect(inputSize.textWidth).toBeLessThanOrEqual(inputSize.availableWidth);
+      await cash.scrollIntoViewIfNeeded();
+      await expect(cash).toHaveText(/^¥-?[\d,]+\.\d{2}$/);
+      const sizes = await cash.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          height: element.getBoundingClientRect().height,
+          lineHeight: parseFloat(style.lineHeight),
+          fontSize: parseFloat(style.fontSize),
+          fractionSize: parseFloat(getComputedStyle(element.querySelector('.hero-fraction')!).fontSize),
+          overflow: element.scrollWidth - element.clientWidth,
+        };
+      });
+      expect(sizes.height).toBeLessThanOrEqual(sizes.lineHeight + 2);
+      expect(sizes.fractionSize).toBeLessThan(sizes.fontSize);
+      expect(sizes.overflow).toBeLessThanOrEqual(0);
+      await noOverflow(page);
+    }
+  }
+});
+
+test('muted text stays readable on tinted selected and recommended surfaces', async ({ page }) => {
+  await openSavedExamples(page);
+  await page.getByRole('button', { name: '查看上海方案', exact: true }).click();
+  for (const [text, surface] of [
+    ['.plan-card-active .plan-description', '.plan-card'],
+    ['.scheme-best .help', '.scheme'],
+    ['.hero-fraction', '.hero-card'],
+  ]) {
+    const ratio = await page.locator(text).evaluate((element, surfaceSelector) => {
+      const luminance = (color: string) => {
+        const channels = color.match(/[\d.]+/g)!.slice(0, 3).map((value) => Number(value) / 255)
+          .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+        return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+      };
+      const foreground = luminance(getComputedStyle(element).color);
+      const background = luminance(getComputedStyle(element.closest(surfaceSelector)!).backgroundColor);
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    }, surface);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
 test('unavailable browser storage is reported and export still works', async ({ page }) => {
   await page.addInitScript(() => {
     Storage.prototype.setItem = () => { throw new DOMException('Storage disabled', 'QuotaExceededError'); };
